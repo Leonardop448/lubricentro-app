@@ -124,7 +124,8 @@ else:
                 'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'
             }
                 
-            horas_atencion = [f"{h:02d}:00:00" for h in range(8, 18)]
+            # Horarios formateados en 12 horas (AM / PM) para la vista
+            horas_atencion_24 = [f"{h:02d}:00:00" for h in range(8, 18)]
             
             dias_mostrados = 0
             dia_offset = 0
@@ -145,21 +146,24 @@ else:
                 
                 st.markdown(f"**📅 {dia_espanol} {dia_actual.day} de {mes_espanol}**")
                 
-                for row_start in range(0, len(horas_atencion), 4):
-                    chunk_horas = horas_atencion[row_start:row_start+4]
+                for row_start in range(0, len(horas_atencion_24), 4):
+                    chunk_horas = horas_atencion_24[row_start:row_start+4]
                     cols = st.columns(len(chunk_horas))
                     
                     for idx, hora in enumerate(chunk_horas):
                         slot_datetime_str = f"{dia_actual} {hora}"
                         is_ocupado = any(slot_datetime_str in t for t in turnos_ocupados)
                         
+                        # Convertimos la hora (ej: "08:00:00") a formato 12h (ej: "08:00 AM") para mostrarla bonita
+                        hora_obj = datetime.strptime(hora, "%H:%M:%S")
+                        hora_12h = hora_obj.strftime("%I:%M %p")
+                        
                         with cols[idx]:
-                            hora_corta = hora[:5]
                             if is_ocupado:
-                                st.error(f"🔴 {hora_corta}\nOcupado")
+                                st.error(f"🔴 {hora_12h}\nOcupado")
                             else:
                                 btn_key = f"btn_slot_{dia_actual}_{hora}"
-                                if st.button(f"🟢 {hora_corta}\nLibre", key=btn_key):
+                                if st.button(f"🟢 {hora_12h}\nLibre", key=btn_key):
                                     st.session_state['turno_preseleccionado'] = {
                                         "fecha": dia_actual,
                                         "hora": hora
