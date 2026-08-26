@@ -16,7 +16,19 @@ if 'turno_preseleccionado' not in st.session_state:
 
 if 'menu_index' not in st.session_state:
     st.session_state['menu_index'] = 0
-
+# --- FUNCIÓN PARA ADMINISTRADORES ---
+def actualizar_estado_turno(turno_id, nuevo_estado):
+    try:
+        db = conectar_db()
+        if db:
+            cursor = db.cursor()
+            cursor.execute("UPDATE turnos SET estado = %s WHERE id = %s", (nuevo_estado, turno_id))
+            db.commit()
+            db.close()
+            st.success(f"¡Turno #{turno_id} actualizado a '{nuevo_estado.upper()}' con éxito!")
+            st.rerun()
+    except Exception as e:
+        st.error(f"Error al actualizar estado: {e}")
 # --- FUNCIÓN PARA ENVIAR ALERTAS POR WHATSAPP A MÚLTIPLES NÚMEROS ---
 def enviar_alerta_whatsapp(texto_mensaje):
     url = "https://automatizacion-evolution-api.3akfbq.easypanel.host/message/sendText/turnoslubricentro"
