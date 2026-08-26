@@ -170,7 +170,7 @@ else:
                 dia_actual = hoy + timedelta(days=dia_offset)
                 dia_offset += 1
                 
-                if dia_actual.weekday() == 6:
+                if dia_actual.weekday() == 6:  # Omitir domingos
                     continue
                 
                 dias_mostrados += 1
@@ -182,30 +182,34 @@ else:
                 
                 st.markdown(f"**📅 {dia_espanol} {dia_actual.day} de {mes_espanol}**")
                 
-                for row_start in range(0, len(horas_atencion_24), 4):
-                    chunk_horas = horas_atencion_24[row_start:row_start+4]
+                # Determinamos qué horas mostrar para este día
+                horas_a_mostrar = []
+                ahora_actual = datetime.now()
+                
+                for hora in horas_atencion_24:
+                    slot_datetime_str = f"{dia_actual} {hora}"
+                    is_ocupado = any(slot_datetime_str in t for t in turnos_ocupados)
                     
-                    # Filtramos las horas si estamos en el día de hoy y la hora ya pasó
-                    horas_a_mostrar = []
-                    ahora_actual = datetime.now()
-                    
-                    for hora in chunk_horas:
-                        # Si es el día de hoy, validamos que la hora sea mayor a la actual
-                        if dia_actual == hoy:
-                            hora_dt = datetime.strptime(hora, "%H:%M:%S").time()
-                            # Damos un pequeño margen o comparamos directamente con la hora actual
-                            if hora_dt >= ahora_actual.time():
+                    # Si es el día de hoy
+                    if dia_actual == hoy:
+                        hora_dt = datetime.strptime(hora, "%H:%M:%S").time()
+                        # Si la hora ya pasó: solo la incluimos si está OCUPADA (para ver el historial del día)
+                        if hora_dt < ahora_actual.time():
+                            if is_ocupado:
                                 horas_a_mostrar.append(hora)
                         else:
-                            # Para los días futuros, mostramos todas las horas normales
+                            # Si la hora aún no pasa, se muestra siempre (libre u ocupada)
                             horas_a_mostrar.append(hora)
+                    else:
+                        # Para días futuros, mostramos todas las horas
+                        horas_a_mostrar.append(hora)
+                
+                # Ahora sí, distribuimos las horas válidas en filas de 4 columnas
+                for row_start in range(0, len(horas_a_mostrar), 4):
+                    chunk_horas = horas_a_mostrar[row_start:row_start+4]
+                    cols = st.columns(len(chunk_horas))
                     
-                    if not horas_a_mostrar:
-                        continue
-                        
-                    cols = st.columns(len(horas_a_mostrar))
-                    
-                    for idx, hora in enumerate(horas_a_mostrar):
+                    for idx, hora in enumerate(chunk_horas):
                         slot_datetime_str = f"{dia_actual} {hora}"
                         is_ocupado = any(slot_datetime_str in t for t in turnos_ocupados)
                         
@@ -225,6 +229,7 @@ else:
                                     st.session_state['menu_index'] = 1
                                     st.rerun()
                 st.write("")
+                
 
         elif menu_cliente == "➕ Agendar Turno Nuevo":
             st.subheader("📝 Registrar un Nuevo Turno")
