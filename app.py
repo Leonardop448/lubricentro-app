@@ -198,26 +198,31 @@ else:
                 if fecha_turno.weekday() == 6:
                     st.error("⚠️ El lubricentro no labora los domingos. Por favor elija de lunes a sábado.")
                 
-                # Consultamos todos los turnos activos y filtramos en Python por la fecha exacta
+                # Consultar directamente los turnos de esta fecha exacta desde la base de datos
                 horas_ocupadas_fecha = []
                 try:
                     db_occ = conectar_db()
                     if db_occ:
                         cur_occ = db_occ.cursor(dictionary=True)
-                        cur_occ.execute("SELECT fecha_hora_turno FROM turnos WHERE estado != 'cancelado'")
-                        todos_turnos = cur_occ.fetchall()
+                        # Consultamos los turnos activos filtrando por la fecha seleccionada
+                        cur_occ.execute(
+                            "SELECT fecha_hora_turno FROM turnos WHERE DATE(fecha_hora_turno) = %s AND estado != 'cancelado'", 
+                            (str(fecha_turno),)
+                        )
+                        turnos_fecha = cur_occ.fetchall()
                         db_occ.close()
                         
-                        for t in todos_turnos:
-                            # t['fecha_hora_turno'] puede venir como objeto datetime o string
-                            t_str = str(t['fecha_hora_turno'])
-                            if " " in t_str:
-                                fecha_parte, hora_parte = t_str.split(" ")
-                                if fecha_parte == str(fecha_turno):
-                                    # Aseguramos formato "HH:MM:SS"
-                                    if len(hora_parte) == 5:
-                                        hora_parte += ":00"
-                                    horas_ocupadas_fecha.append(hora_parte)
+                        for t in turnos_fecha:
+                            val = t['fecha_hora_turno']
+                            # Si viene como objeto datetime, extraemos la hora directamente; si es string, usamos split
+                            if isinstance(val, datetime):
+                                hora_formato = val.strftime("%H:%M:%S")
+                            else:
+                                val_str = str(val)
+                                hora_formato = val_str.split(" ")[1] if " " in val_str else val_str
+                                if len(hora_formato) == 5:
+                                    hora_formato += ":00"
+                            horas_ocupadas_fecha.append(hora_formato)
                 except Exception as e:
                     pass
                 
