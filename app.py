@@ -1,4 +1,5 @@
 import streamlit as st
+import requests
 from datetime import datetime, timedelta
 from database.conexion import conectar_db
 
@@ -15,6 +16,29 @@ if 'turno_preseleccionado' not in st.session_state:
 
 if 'menu_index' not in st.session_state:
     st.session_state['menu_index'] = 0
+
+# --- FUNCIÓN PARA ENVIAR ALERTAS POR WHATSAPP VÍA EVOLUTION API ---
+def enviar_alerta_whatsapp(texto_mensaje):
+    url = "https://automatizacion-evolution-api.3akfbq.easypanel.host/message/sendText/turnoslubricentro"
+    
+    headers = {
+        "apikey": "429683C4C977415CAAFCCE10F7D57E11",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "number": "573233022983",  # Número de la administradora
+        "text": texto_mensaje,
+        "delay": 1200
+    }
+    
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        return response.status_code == 201 or response.status_code == 200
+    except Exception as e:
+        print(f"Error al enviar WhatsApp: {e}")
+        return False
+# ------------------------------------------------------------------
 
 if st.session_state['user'] is None:
     st.subheader("🔑 Acceso o Registro de Clientes")
@@ -101,12 +125,10 @@ else:
         st.header("🚗 Panel de Turnos - Cliente")
         st.success(f"Bienvenido **{user['nombre']}** Vehículo: **{user['placa']}**")
         
-        # Control inteligente de pestañas mediante session_state
         menu_opciones = ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"]
         
         menu_cliente = st.radio("¿Qué deseas hacer?", menu_opciones, index=st.session_state['menu_index'], horizontal=True)
         
-        # Sincronizamos la pestaña activa
         if menu_cliente == menu_opciones[0]:
             st.session_state['menu_index'] = 0
         elif menu_cliente == menu_opciones[1]:
@@ -147,7 +169,7 @@ else:
                 dia_actual = hoy + timedelta(days=dia_offset)
                 dia_offset += 1
                 
-                if dia_actual.weekday() == 6:  # Omitir domingos
+                if dia_actual.weekday() == 6:
                     continue
                 
                 dias_mostrados += 1
@@ -180,7 +202,7 @@ else:
                                         "fecha": dia_actual,
                                         "hora": hora
                                     }
-                                    st.session_state['menu_index'] = 1  # Salta a Agendar Turno Nuevo
+                                    st.session_state['menu_index'] = 1
                                     st.rerun()
                 st.write("")
 
@@ -297,10 +319,20 @@ else:
                                     db.commit()
                                     db.close()
                                     
+                                    # --- ENVÍO DE ALERTA A WHATSAPP DE LA ADMINISTRADORA ---
+                                    nombres_servicios_str = ", ".join(servicios_seleccionados)
+                                    mensaje_whatsapp = f"""🚨 *Turno solicitado*
+ID Turno: #{turno_id}
+Servicios: {nombres_servicios_str}
+Fecha y Hora: {fecha_hora_completa}
+Estado: 🟡 PENDIENTE
+Observaciones: {observaciones if observaciones else 'Ninguna'}"""
+                                    enviar_alerta_whatsapp(mensaje_whatsapp)
+                                    # -----------------------------------------------------
+                                    
                                     st.session_state['turno_preseleccionado'] = None
                                     st.success("✅ ¡Turno agendado con éxito!")
                                     
-                                    # Devuelve automáticamente al Calendario Semanal
                                     st.session_state['menu_index'] = 0
                                     st.rerun()
                         except Exception as e:
@@ -353,6 +385,16 @@ else:
                                             cur_del.execute("DELETE FROM turnos WHERE id = %s", (turno['id'],))
                                             db_del.commit()
                                             db_del.close()
+                                            
+                                            # --- ENVÍO DE ALERTA DE ANULACIÓN A WHATSAPP ---
+                                            mensaje_anulacion = f"""❌ *Turno Anulado/Eliminado*
+ID Turno: #{turno['id']}
+Servicios: {turno['nombres_servicios']}
+Fecha y Hora: {turno['fecha_hora_turno']}
+Estado: 🔴 CANCELADO"""
+                                            enviar_alerta_whatsapp(mensaje_anulacion)
+                                            # ---------------------------------------------
+                                            
                                             st.success(f"Turno #{turno['id']} eliminado con éxito.")
                                             st.rerun()
                                     except Exception as e:
