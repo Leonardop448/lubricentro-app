@@ -182,52 +182,49 @@ else:
                 
                 st.markdown(f"**📅 {dia_espanol} {dia_actual.day} de {mes_espanol}**")
                 
-                # Determinamos qué horas mostrar para este día
                 horas_a_mostrar = []
                 ahora_actual = datetime.now()
                 
                 for hora in horas_atencion_24:
-                    slot_datetime_str = f"{dia_actual} {hora}"
-                    is_ocupado = any(slot_datetime_str in t for t in turnos_ocupados)
-                    
-                    # Si es el día de hoy
+                    # Si es el día de hoy, filtramos estrictamente cualquier hora que ya haya pasado
                     if dia_actual == hoy:
                         hora_dt = datetime.strptime(hora, "%H:%M:%S").time()
-                        # Si la hora ya pasó: solo la incluimos si está OCUPADA (para ver el historial del día)
-                        if hora_dt < ahora_actual.time():
-                            if is_ocupado:
-                                horas_a_mostrar.append(hora)
-                        else:
-                            # Si la hora aún no pasa, se muestra siempre (libre u ocupada)
+                        # Solo incluimos las horas que sean iguales o mayores a la hora actual
+                        if hora_dt >= ahora_actual.time():
                             horas_a_mostrar.append(hora)
                     else:
-                        # Para días futuros, mostramos todas las horas
+                        # Para días futuros, mostramos todas las horas completas (de 8 AM a 5 PM)
                         horas_a_mostrar.append(hora)
                 
-                # Ahora sí, distribuimos las horas válidas en filas de 4 columnas
-                for row_start in range(0, len(horas_a_mostrar), 4):
-                    chunk_horas = horas_a_mostrar[row_start:row_start+4]
-                    cols = st.columns(len(chunk_horas))
-                    
-                    for idx, hora in enumerate(chunk_horas):
-                        slot_datetime_str = f"{dia_actual} {hora}"
-                        is_ocupado = any(slot_datetime_str in t for t in turnos_ocupados)
+                # Distribuimos las horas válidas en filas de 4 columnas
+                if horas_a_mostrar:
+                    for row_start in range(0, len(horas_a_mostrar), 4):
+                        chunk_horas = horas_a_mostrar[row_start:row_start+4]
+                        cols = st.columns(len(chunk_horas))
                         
-                        hora_obj = datetime.strptime(hora, "%H:%M:%S")
-                        hora_12h = hora_obj.strftime("%I:%M %p")
-                        
-                        with cols[idx]:
-                            if is_ocupado:
-                                st.error(f"🔴 {hora_12h}\nOcupado")
-                            else:
-                                btn_key = f"btn_slot_{dia_actual}_{hora}"
-                                if st.button(f"🟢 {hora_12h}\nLibre", key=btn_key):
-                                    st.session_state['turno_preseleccionado'] = {
-                                        "fecha": dia_actual,
-                                        "hora": hora
-                                    }
-                                    st.session_state['menu_index'] = 1
-                                    st.rerun()
+                        for idx, hora in enumerate(chunk_horas):
+                            slot_hora_str = hora[:5] # "HH:MM"
+                            is_ocupado = False
+                            for t in turnos_ocupados:
+                                if str(dia_actual) in t and slot_hora_str in t:
+                                    is_ocupado = True
+                                    break
+                            
+                            hora_obj = datetime.strptime(hora, "%H:%M:%S")
+                            hora_12h = hora_obj.strftime("%I:%M %p")
+                            
+                            with cols[idx]:
+                                if is_ocupado:
+                                    st.error(f"🔴 {hora_12h}\nOcupado")
+                                else:
+                                    btn_key = f"btn_slot_{dia_actual}_{hora}"
+                                    if st.button(f"🟢 {hora_12h}\nLibre", key=btn_key):
+                                        st.session_state['turno_preseleccionado'] = {
+                                            "fecha": dia_actual,
+                                            "hora": hora
+                                        }
+                                        st.session_state['menu_index'] = 1
+                                        st.rerun()
                 st.write("")
                 
 
