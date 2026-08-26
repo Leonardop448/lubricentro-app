@@ -18,12 +18,22 @@ st.markdown("""
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
         border: 1px solid rgba(255, 255, 255, 0.1);
         color: #ffffff;
-        max-width: 750px;
+        max-width: 800px;
         margin-top: 2rem;
     }
+    /* Estilos globales de texto en la ventana principal */
     h1, h2, h3, p, label, span {
         color: #ffffff !important;
     }
+    
+    /* CORRECCIÓN BARRA LATERAL: Fondo oscuro y letras visibles */
+    [data-testid="stSidebar"] {
+        background-color: #1a1a1a !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: #ffffff !important;
+    }
+
     div.stButton > button {
         width: 100%;
         border-radius: 10px;
@@ -46,18 +56,20 @@ st.markdown("""
     .slot-libre {
         background-color: rgba(46, 204, 113, 0.2);
         border: 1px solid #2ecc71;
-        padding: 10px;
+        padding: 8px;
         border-radius: 8px;
         text-align: center;
         margin-bottom: 5px;
+        font-size: 0.9rem;
     }
     .slot-ocupado {
         background-color: rgba(231, 76, 60, 0.2);
         border: 1px solid #e74c3c;
-        padding: 10px;
+        padding: 8px;
         border-radius: 8px;
         text-align: center;
         margin-bottom: 5px;
+        font-size: 0.9rem;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -83,7 +95,6 @@ if st.session_state['user'] is None:
                     db = conectar_db()
                     if db:
                         cursor = db.cursor(dictionary=True)
-                        # Buscamos por placa y contraseña
                         cursor.execute("SELECT * FROM usuarios WHERE placa = %s AND password = %s", (placa_login, pass_login))
                         user = cursor.fetchone()
                         db.close()
@@ -168,23 +179,45 @@ else:
                 turnos_ocupados = [str(t['fecha_hora_turno']) for t in cursor.fetchall()]
                 db.close()
                 
-            horas_atencion = ["08:00:00", "10:00:00", "14:00:00", "16:00:00"]
+            # Diccionarios para traducir al español los días y meses
+            dias_es = {
+                'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles',
+                'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
+            }
+            meses_es = {
+                'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril',
+                'May': 'Mayo', 'June': 'Junio', 'July': 'Julio', 'August': 'Agosto',
+                'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'
+            }
+                
+            # Horarios de atención de 1 en 1 hora desde las 8:00 AM hasta las 5:00 PM (17:00)
+            horas_atencion = [f"{h:02d}:00:00" for h in range(8, 18)]
             
             for i in range(5):
                 dia_actual = hoy + timedelta(days=i)
-                st.markdown(f"**📅 Día: {dia_actual.strftime('%A %d de %B')}**")
+                nombre_dia_en = dia_actual.strftime('%A')
+                nombre_mes_en = dia_actual.strftime('%B')
                 
-                cols = st.columns(len(horas_atencion))
-                for idx, hora in enumerate(horas_atencion):
-                    slot_datetime_str = f"{dia_actual} {hora}"
-                    is_ocupado = any(slot_datetime_str in t for t in turnos_ocupados)
+                dia_espanol = dias_es.get(nombre_dia_en, nombre_dia_en)
+                mes_espanol = meses_es.get(nombre_mes_en, nombre_mes_en)
+                
+                st.markdown(f"**📅 Día: {dia_espanol} {dia_actual.day} de {mes_espanol}**")
+                
+                # Mostramos en filas de 4 columnas para que se organicen bien las horas
+                for row_start in range(0, len(horas_atencion), 4):
+                    chunk_horas = horas_atencion[row_start:row_start+4]
+                    cols = st.columns(len(chunk_horas))
                     
-                    with cols[idx]:
-                        hora_corta = hora[:5]
-                        if is_ocupado:
-                            st.markdown(f"<div class='slot-ocupado'>🔴 <b>{hora_corta}</b><br>Ocupado</div>", unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"<div class='slot-libre'>🟢 <b>{hora_corta}</b><br>Disponible</div>", unsafe_allow_html=True)
+                    for idx, hora in enumerate(chunk_horas):
+                        slot_datetime_str = f"{dia_actual} {hora}"
+                        is_ocupado = any(slot_datetime_str in t for t in turnos_ocupados)
+                        
+                        with cols[idx]:
+                            hora_corta = hora[:5]
+                            if is_ocupado:
+                                st.markdown(f"<div class='slot-ocupado'>🔴 <b>{hora_corta}</b><br>Ocupado</div>", unsafe_allow_html=True)
+                            else:
+                                st.markdown(f"<div class='slot-libre'>🟢 <b>{hora_corta}</b><br>Disponible</div>", unsafe_allow_html=True)
                 st.write("")
 
         elif menu_cliente == "➕ Agendar Turno Nuevo":
@@ -204,7 +237,10 @@ else:
                 servicio_id = servicios_dict[servicio_seleccionado]
                 
                 fecha_turno = st.date_input("Fecha para el turno", min_value=datetime.today(), key="sel_fecha")
-                hora_turno = st.selectbox("Hora disponible", ["08:00:00", "10:00:00", "14:00:00", "16:00:00"], key="sel_hora")
+                
+                # Selector de horas de 1 en 1 de 8 AM a 5 PM
+                horas_disponibles_str = [f"{h:02d}:00:00" for h in range(8, 18)]
+                hora_turno = st.selectbox("Hora disponible", horas_disponibles_str, key="sel_hora")
                 
                 observaciones = st.text_area("Observaciones adicionales", placeholder="Ej: Aceite semisintético...", key="sel_obs")
                 
