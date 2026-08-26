@@ -186,11 +186,11 @@ else:
                 ahora_actual = datetime.now()
                 
                 for hora in horas_atencion_24:
-                    # Si es el día de hoy, filtramos estrictamente cualquier hora que ya haya pasado
+                    # Si es el día de hoy, filtramos estrictamente las horas pasadas
                     if dia_actual == hoy:
                         hora_dt = datetime.strptime(hora, "%H:%M:%S").time()
-                        # Solo incluimos las horas que sean iguales o mayores a la hora actual
-                        if hora_dt >= ahora_actual.time():
+                        # Comparamos con la hora actual (redondeando a la hora en punto)
+                        if hora_dt.hour >= ahora_actual.hour:
                             horas_a_mostrar.append(hora)
                     else:
                         # Para días futuros, mostramos todas las horas completas (de 8 AM a 5 PM)
