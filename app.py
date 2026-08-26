@@ -98,7 +98,7 @@ else:
         st.header("🚗 Panel de Turnos - Cliente")
         st.success(f"Bienvenido **{user['nombre']}** Vehículo: **{user['placa']}**")
         
-        # --- PEGA ESTO AQUÍ ---
+        
         menu_opciones = ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"]
         default_index = 1 if st.session_state['turno_preseleccionado'] is not None else 0
         
@@ -170,10 +170,12 @@ else:
                             else:
                                 btn_key = f"btn_slot_{dia_actual}_{hora}"
                                 if st.button(f"🟢 {hora_12h}\nLibre", key=btn_key):
+                                    # Asignamos la nueva selección
                                     st.session_state['turno_preseleccionado'] = {
                                         "fecha": dia_actual,
                                         "hora": hora
                                     }
+                                    # Forzamos un marcador de cambio o recarga limpia
                                     st.rerun()
                 st.write("")
 
@@ -195,6 +197,7 @@ else:
                 pre_fecha = datetime.today()
                 pre_hora_str = None
                 
+                # Si hay un turno preseleccionado por el usuario, lo usamos
                 if st.session_state['turno_preseleccionado']:
                     pre_fecha = st.session_state['turno_preseleccionado']['fecha']
                     pre_hora_str = st.session_state['turno_preseleccionado']['hora']
