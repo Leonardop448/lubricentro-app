@@ -184,9 +184,28 @@ else:
                 
                 for row_start in range(0, len(horas_atencion_24), 4):
                     chunk_horas = horas_atencion_24[row_start:row_start+4]
-                    cols = st.columns(len(chunk_horas))
                     
-                    for idx, hora in enumerate(chunk_horas):
+                    # Filtramos las horas si estamos en el día de hoy y la hora ya pasó
+                    horas_a_mostrar = []
+                    ahora_actual = datetime.now()
+                    
+                    for hora in chunk_horas:
+                        # Si es el día de hoy, validamos que la hora sea mayor a la actual
+                        if dia_actual == hoy:
+                            hora_dt = datetime.strptime(hora, "%H:%M:%S").time()
+                            # Damos un pequeño margen o comparamos directamente con la hora actual
+                            if hora_dt >= ahora_actual.time():
+                                horas_a_mostrar.append(hora)
+                        else:
+                            # Para los días futuros, mostramos todas las horas normales
+                            horas_a_mostrar.append(hora)
+                    
+                    if not horas_a_mostrar:
+                        continue
+                        
+                    cols = st.columns(len(horas_a_mostrar))
+                    
+                    for idx, hora in enumerate(horas_a_mostrar):
                         slot_datetime_str = f"{dia_actual} {hora}"
                         is_ocupado = any(slot_datetime_str in t for t in turnos_ocupados)
                         
