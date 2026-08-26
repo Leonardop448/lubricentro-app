@@ -55,12 +55,21 @@ if st.session_state['user'] is None:
                     db = conectar_db()
                     if db:
                         cursor = db.cursor()
+                        # 1. Insertar usuario
                         cursor.execute(
                             "INSERT INTO usuarios (nombre, telefono, placa, password, rol) VALUES (%s, %s, %s, %s, 'cliente')",
                             (reg_nombre, reg_tel, reg_placa, reg_pass)
                         )
                         db.commit()
                         user_id = cursor.lastrowid
+                        
+                        # 2. Asegurar que exista el vehículo asociado para evitar errores de FK
+                        cursor.execute("SELECT id FROM vehiculos WHERE placa = %s", (reg_placa,))
+                        veh = cursor.fetchone()
+                        if not veh:
+                            cursor.execute("INSERT INTO vehiculos (usuario_id, placa) VALUES (%s, %s)", (user_id, reg_placa))
+                            db.commit()
+                        
                         db.close()
                         
                         st.session_state['user'] = {
@@ -78,8 +87,8 @@ if st.session_state['user'] is None:
 else:
     user = st.session_state['user']
     st.sidebar.write(f"👤 Hola, **{user['nombre']}**")
-    st.sidebar.write(f"Vehículo: {user['placa']}")
-    st.sidebar.write(f"Rol: {user['rol'].upper()}")
+    st.sidebar.write(f"Vehículo: `{user['placa']}`")
+    st.sidebar.write(f"Rol: `{user['rol'].upper()}`")
     
     if st.sidebar.button("Cerrar Sesión", key="btn_logout"):
         st.session_state['user'] = None
@@ -91,14 +100,14 @@ else:
         
     else:
         st.header("🚗 Panel de Turnos - Cliente")
-        st.success(f"Bienvenido. **{user['nombre']}** Placa: **{user['placa']}**")
+        st.success(f"Bienvenido. Vehículo asociado: **{user['placa']}**")
         
         menu_cliente = st.radio("¿Qué deseas hacer?", ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"], horizontal=True)
         
         st.write("---")
         
         if menu_cliente == "📅 Calendario Semanal y Disponibilidad":
-            st.subheader("🗓️ Estado de Turnos de la Semana (Verde: Libre | Rojo: Ocupado)")
+            st.subheader("🗓️ Estado de Turnos (Lunes a Sábado)")
             
             hoy = datetime.today().date()
             db = conectar_db()
@@ -111,7 +120,7 @@ else:
                 
             dias_es = {
                 'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles',
-                'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado'
+                'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
             }
             meses_es = {
                 'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril',
@@ -121,7 +130,6 @@ else:
                 
             horas_atencion = [f"{h:02d}:00:00" for h in range(8, 18)]
             
-            # Recorremos hasta completar 6 días hábiles (Lunes a Sábado)
             dias_mostrados = 0
             dia_offset = 0
             
@@ -129,8 +137,7 @@ else:
                 dia_actual = hoy + timedelta(days=dia_offset)
                 dia_offset += 1
                 
-                # Si es domingo (weekday == 6), lo saltamos
-                if dia_actual.weekday() == 6:
+                if dia_actual.weekday() == 6:  # Omitir domingos
                     continue
                 
                 dias_mostrados += 1
@@ -140,7 +147,7 @@ else:
                 dia_espanol = dias_es.get(nombre_dia_en, nombre_dia_en)
                 mes_espanol = meses_es.get(nombre_mes_en, nombre_mes_en)
                 
-                st.markdown(f"**📅 Día: {dia_espanol} {dia_actual.day} de {mes_espanol}**")
+                st.markdown(f"**📅 {dia_espanol} {dia_actual.day} de {mes_espanol}**")
                 
                 for row_start in range(0, len(horas_atencion), 4):
                     chunk_horas = horas_atencion[row_start:row_start+4]
@@ -153,13 +160,13 @@ else:
                         with cols[idx]:
                             hora_corta = hora[:5]
                             if is_ocupado:
-                                st.markdown(f"<div class='slot-ocupado'>🔴 <b>{hora_corta}</b><br>Ocupado</div>", unsafe_allow_html=True)
+                                st.error(f"🔴 {hora_corta}\nOcupado")
                             else:
-                                st.markdown(f"<div class='slot-libre'>🟢 <b>{hora_corta}</b><br>Disponible</div>", unsafe_allow_html=True)
+                                st.success(f"🟢 {hora_corta}\nLibre")
                 st.write("")
 
         elif menu_cliente == "➕ Agendar Turno Nuevo":
-            st.subheader("📝 Registrar un Nuevo Turno")
+            st.subheader("📝 Registrar un Nuevo Turno (Múltiples Servicios)")
             
             db = conectar_db()
             servicios_dict = {}
@@ -171,14 +178,13 @@ else:
                 db.close()
             
             if servicios_dict:
-                servicio_seleccionado = st.selectbox("Seleccione el Servicio", list(servicios_dict.keys()), key="sel_serv")
-                servicio_id = servicios_dict[servicio_seleccionado]
+                # Selección múltiple: Puede escoger 1, 2 o los 3 servicios
+                servicios_seleccionados = st.multiselect("Seleccione uno o varios servicios", list(servicios_dict.keys()), key="sel_servicios_multi")
                 
                 fecha_turno = st.date_input("Fecha para el turno", min_value=datetime.today(), key="sel_fecha")
                 
-                # Validar si el usuario seleccionó un domingo (weekday() == 6)
                 if fecha_turno.weekday() == 6:
-                    st.error("⚠️ El lubricentro no labora los domingos. Por favor seleccione un día entre lunes y sábado.")
+                    st.error("⚠️ El lubricentro no labora los domingos. Por favor elija de lunes a sábado.")
                 
                 horas_disponibles_str = [f"{h:02d}:00:00" for h in range(8, 18)]
                 hora_turno = st.selectbox("Hora disponible", horas_disponibles_str, key="sel_hora")
@@ -186,21 +192,41 @@ else:
                 observaciones = st.text_area("Observaciones adicionales", placeholder="Ej: Aceite semisintético...", key="sel_obs")
                 
                 if st.button("Confirmar y Agendar Turno", key="btn_agendar"):
-                    fecha_hora_completa = f"{fecha_turno} {hora_turno}"
-                    try:
-                        db = conectar_db()
-                        if db:
-                            cursor = db.cursor()
-                            cursor.execute(
-                                """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
-                                   VALUES (%s, %s, %s, %s, 'pendiente', %s)""",
-                                (user['id'], user['id'], servicio_id, fecha_hora_completa, observaciones)
-                            )
-                            db.commit()
-                            db.close()
-                            st.success("✅ ¡Turno agendado con éxito!")
-                    except Exception as e:
-                        st.error(f"Error al guardar el turno (Es posible que ya exista una reserva a esa hora): {e}")
+                    if fecha_turno.weekday() == 6:
+                        st.error("No se puede agendar un domingo.")
+                    elif not servicios_seleccionados:
+                        st.warning("⚠️ Por favor seleccione al menos un servicio.")
+                    else:
+                        fecha_hora_completa = f"{fecha_turno} {hora_turno}"
+                        try:
+                            db = conectar_db()
+                            if db:
+                                cursor = db.cursor()
+                                
+                                # Obtener el ID del vehículo asociado al usuario
+                                cursor.execute("SELECT id FROM vehiculos WHERE usuario_id = %s", (user['id'],))
+                                veh_row = cursor.fetchone()
+                                vehiculo_id = veh_row[0] if veh_row else None
+                                
+                                # Si por alguna razón no tiene vehículo en la tabla, lo creamos al vuelo
+                                if not vehiculo_id:
+                                    cursor.execute("INSERT INTO vehiculos (usuario_id, placa) VALUES (%s, %s)", (user['id'], user['placa']))
+                                    db.commit()
+                                    vehiculo_id = cursor.lastrowid
+
+                                # Registramos un turno por cada servicio seleccionado agrupados en la misma fecha/hora
+                                for serv_nombre in servicios_seleccionados:
+                                    serv_id = servicios_dict[serv_nombre]
+                                    cursor.execute(
+                                        """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
+                                           VALUES (%s, %s, %s, %s, 'pendiente', %s)""",
+                                        (user['id'], vehiculo_id, serv_id, fecha_hora_completa, observaciones)
+                                    )
+                                db.commit()
+                                db.close()
+                                st.success("✅ ¡Turno(s) agendado(s) con éxito!")
+                        except Exception as e:
+                            st.error(f"Error al guardar el turno: {e}")
             else:
                 st.warning("⚠️ No hay servicios configurados en la base de datos.")
 
