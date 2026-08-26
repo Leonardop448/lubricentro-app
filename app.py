@@ -190,21 +190,26 @@ else:
                         st.warning("⚠️ Por favor seleccione al menos un servicio.")
                     else:
                         fecha_hora_completa = f"{fecha_turno} {hora_turno}"
-                        # Unimos los servicios seleccionados en un solo texto (ej: "Cambio de aceite, Cambio de filtros")
-                        servicios_texto = ", ".join(servicios_seleccionados)
-                        # Tomamos el ID del primer servicio seleccionado para cumplir con la relación de la tabla (servicio_id)
-                        primer_servicio_id = servicios_dict[servicios_seleccionados[0]]
-                        
                         try:
                             db = conectar_db()
                             if db:
                                 cursor = db.cursor()
-                                # Insertamos UNA SOLA FILA en la base de datos
+                                # 1. Insertamos UN SOLO turno principal
                                 cursor.execute(
                                     """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
                                        VALUES (%s, %s, %s, %s, 'pendiente', %s)""",
-                                    (user['id'], user['id'], primer_servicio_id, fecha_hora_completa, observaciones)
+                                    (user['id'], user['id'], servicios_dict[servicios_seleccionados[0]], fecha_hora_completa, observaciones)
                                 )
+                                turno_id = cursor.lastrowid
+                                
+                                # 2. Insertamos los servicios elegidos en la tabla intermedia
+                                for serv_nombre in servicios_seleccionados:
+                                    serv_id = servicios_dict[serv_nombre]
+                                    cursor.execute(
+                                        "INSERT INTO turno_servicios (turno_id, servicio_id) VALUES (%s, %s)",
+                                        (turno_id, serv_id)
+                                    )
+                                
                                 db.commit()
                                 db.close()
                                 st.success("✅ ¡Turno agendado con éxito!")
@@ -214,17 +219,24 @@ else:
                 st.warning("⚠️ No hay servicios configurados en la base de datos.")
 
         elif menu_cliente == "⚙️ Gestionar mis Turnos":
-            st.subheader("📋 Mis Turnos Separados")
+            st.subheader("📋 Mis Turnos")
             
             try:
                 db = conectar_db()
                 if db:
                     cursor = db.cursor(dictionary=True)
+                    # Consultamos el turno y unimos mediante GROUP_CONCAT los nombres reales de la tabla servicios
                     cursor.execute("""
-                        SELECT t.id, s.nombre_servicio, t.fecha_hora_turno, t.estado, t.observaciones 
+                        SELECT t.id, 
+                               GROUP_CONCAT(s.nombre_servicio SEPARATOR ', ') as nombres_servicios, 
+                               t.fecha_hora_turno, 
+                               t.estado, 
+                               t.observaciones 
                         FROM turnos t
-                        JOIN servicios s ON t.servicio_id = s.id
+                        JOIN turno_servicios ts ON t.id = ts.turno_id
+                        JOIN servicios s ON ts.servicio_id = s.id
                         WHERE t.usuario_id = %s
+                        GROUP BY t.id, t.fecha_hora_turno, t.estado, t.observaciones
                         ORDER BY t.fecha_hora_turno DESC
                     """, (user['id'],))
                     mis_turnos = cursor.fetchall()
@@ -237,7 +249,7 @@ else:
                             with st.container():
                                 st.markdown(f"""
                                 * **ID Turno:** #{turno['id']}
-                                * **Servicio:** {turno['nombre_servicio']}
+                                * **Servicios:** {turno['nombres_servicios']}
                                 * **Fecha y Hora:** {turno['fecha_hora_turno']}
                                 * **Estado:** {estado_color} `{turno['estado'].upper()}`
                                 * **Observaciones:** {turno['observaciones'] if turno['observaciones'] else 'Ninguna'}
@@ -248,6 +260,8 @@ else:
                                         db_del = conectar_db()
                                         if db_del:
                                             cur_del = db_del.cursor()
+                                            # Borramos primero de la tabla intermedia y luego el turno
+                                            cur_del.execute("DELETE FROM turno_servicios WHERE turno_id = %s", (turno['id'],))
                                             cur_del.execute("DELETE FROM turnos WHERE id = %s", (turno['id'],))
                                             db_del.commit()
                                             db_del.close()
