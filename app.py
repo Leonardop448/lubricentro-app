@@ -93,7 +93,7 @@ else:
         
     else:
         st.header("🚗 Panel de Turnos - Cliente")
-        st.success(f"Bienvenido. Vehículo asociado: **{user['placa']}**")
+        st.success(f"Bienvenido **{user['nombre']}** - Vehículo: **{user['placa']}**")
         
         menu_cliente = st.radio("¿Qué deseas hacer?", ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"], horizontal=True)
         
