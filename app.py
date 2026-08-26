@@ -198,18 +198,26 @@ else:
                 if fecha_turno.weekday() == 6:
                     st.error("⚠️ El lubricentro no labora los domingos. Por favor elija de lunes a sábado.")
                 
-                # Consultar qué horas ya están ocupadas en la fecha seleccionada
+                # Consultamos todos los turnos activos y filtramos en Python por la fecha exacta
                 horas_ocupadas_fecha = []
                 try:
                     db_occ = conectar_db()
                     if db_occ:
                         cur_occ = db_occ.cursor(dictionary=True)
-                        cur_occ.execute(
-                            "SELECT TIME(fecha_hora_turno) as hora FROM turnos WHERE DATE(fecha_hora_turno) = %s AND estado != 'cancelado'", 
-                            (fecha_turno,)
-                        )
-                        horas_ocupadas_fecha = [str(row['hora']) for row in cur_occ.fetchall()]
+                        cur_occ.execute("SELECT fecha_hora_turno FROM turnos WHERE estado != 'cancelado'")
+                        todos_turnos = cur_occ.fetchall()
                         db_occ.close()
+                        
+                        for t in todos_turnos:
+                            # t['fecha_hora_turno'] puede venir como objeto datetime o string
+                            t_str = str(t['fecha_hora_turno'])
+                            if " " in t_str:
+                                fecha_parte, hora_parte = t_str.split(" ")
+                                if fecha_parte == str(fecha_turno):
+                                    # Aseguramos formato "HH:MM:SS"
+                                    if len(hora_parte) == 5:
+                                        hora_parte += ":00"
+                                    horas_ocupadas_fecha.append(hora_parte)
                 except Exception as e:
                     pass
                 
@@ -247,7 +255,6 @@ else:
                             if db:
                                 cursor = db.cursor(dictionary=True)
                                 
-                                # Doble verificación de seguridad
                                 cursor.execute(
                                     "SELECT id FROM turnos WHERE fecha_hora_turno = %s AND estado != 'cancelado'", 
                                     (fecha_hora_completa,)
