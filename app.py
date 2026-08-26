@@ -4,7 +4,7 @@ from database.conexion import conectar_db
 
 st.set_page_config(page_title="Lubricentro El Calvo", page_icon="🛢️", layout="centered")
 
-# --- ESTILOS CSS DEFINITIVOS (Todo oscuro y legible) ---
+# --- ESTILOS CSS DEFINITIVOS (Modo Oscuro Total e Infalible) ---
 st.markdown("""
     <style>
     /* Fondo general de toda la aplicación */
@@ -38,11 +38,37 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* Cajas de texto, contenedores y elementos de Streamlit */
+    /* Cajas de texto, contenedores y selectores */
     div[data-baseweb="select"] > div, input, textarea {
         background-color: #2a2a2a !important;
         color: white !important;
         border: 1px solid #444 !important;
+    }
+
+    /* --- CORRECCIÓN DEL POP-UP DEL CALENDARIO (St.date_input) --- */
+    div[data-baseweb="popover"], div[data-baseweb="calendar"], .stDatePicker {
+        background-color: #1e1e1e !important;
+        color: #ffffff !important;
+        border: 1px solid #444 !important;
+    }
+    
+    /* Forzar visibilidad de textos y números dentro del calendario emergente */
+    div[data-baseweb="calendar"] * {
+        color: #ffffff !important;
+        background-color: transparent !important;
+    }
+    
+    /* Día seleccionado en el calendario */
+    div[data-baseweb="calendar"] div[aria-selected="true"] {
+        background-color: #ff4b4b !important;
+        color: #ffffff !important;
+        border-radius: 50% !important;
+    }
+    
+    /* Hover en los días del calendario */
+    div[data-baseweb="calendar"] button:hover {
+        background-color: #333333 !important;
+        border-radius: 50% !important;
     }
 
     div.stButton > button {
