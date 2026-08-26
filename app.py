@@ -10,6 +10,9 @@ st.title("🛢️ Lubricentro El Calvo")
 if 'user' not in st.session_state:
     st.session_state['user'] = None
 
+if 'turno_preseleccionado' not in st.session_state:
+    st.session_state['turno_preseleccionado'] = None
+
 if st.session_state['user'] is None:
     st.subheader("🔑 Acceso o Registro de Clientes")
     tab1, tab2 = st.tabs(["Iniciar Sesión", "Registrarse"])
@@ -100,7 +103,7 @@ else:
         st.write("---")
         
         if menu_cliente == "📅 Calendario Semanal y Disponibilidad":
-            st.subheader("🗓️ Estado de Turnos (Lunes a Sábado)")
+            st.subheader("🗓️ Estado de Turnos (Lunes a Sábado) - Haz clic en un horario libre para agendar")
             
             hoy = datetime.today().date()
             db = conectar_db()
@@ -155,7 +158,13 @@ else:
                             if is_ocupado:
                                 st.error(f"🔴 {hora_corta}\nOcupado")
                             else:
-                                st.success(f"🟢 {hora_corta}\nLibre")
+                                btn_key = f"btn_slot_{dia_actual}_{hora}"
+                                if st.button(f"🟢 {hora_corta}\nLibre", key=btn_key):
+                                    st.session_state['turno_preseleccionado'] = {
+                                        "fecha": dia_actual,
+                                        "hora": hora
+                                    }
+                                    st.rerun()
                 st.write("")
 
         elif menu_cliente == "➕ Agendar Turno Nuevo":
@@ -173,13 +182,22 @@ else:
             if servicios_dict:
                 servicios_seleccionados = st.multiselect("Seleccione uno o varios servicios", list(servicios_dict.keys()), key="sel_servicios_multi")
                 
-                fecha_turno = st.date_input("Fecha para el turno", min_value=datetime.today(), key="sel_fecha")
+                pre_fecha = datetime.today()
+                pre_hora_index = 0
+                horas_disponibles_str = [f"{h:02d}:00:00" for h in range(8, 18)]
+                
+                if st.session_state['turno_preseleccionado']:
+                    pre_fecha = st.session_state['turno_preseleccionado']['fecha']
+                    h_target = st.session_state['turno_preseleccionado']['hora']
+                    if h_target in horas_disponibles_str:
+                        pre_hora_index = horas_disponibles_str.index(h_target)
+                
+                fecha_turno = st.date_input("Fecha para el turno", value=pre_fecha, min_value=datetime.today(), key="sel_fecha")
                 
                 if fecha_turno.weekday() == 6:
                     st.error("⚠️ El lubricentro no labora los domingos. Por favor elija de lunes a sábado.")
                 
-                horas_disponibles_str = [f"{h:02d}:00:00" for h in range(8, 18)]
-                hora_turno = st.selectbox("Hora disponible", horas_disponibles_str, key="sel_hora")
+                hora_turno = st.selectbox("Hora disponible", horas_disponibles_str, index=pre_hora_index, key="sel_hora")
                 
                 observaciones = st.text_area("Observaciones adicionales", placeholder="Ej: Cambiar también filtro de caja...", key="sel_obs")
                 
@@ -194,7 +212,7 @@ else:
                             db = conectar_db()
                             if db:
                                 cursor = db.cursor()
-                                # 1. Insertamos UN SOLO turno principal
+                                # 1. Insertamos UN SOLO turno principal en la tabla turnos
                                 cursor.execute(
                                     """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
                                        VALUES (%s, %s, %s, %s, 'pendiente', %s)""",
@@ -202,7 +220,7 @@ else:
                                 )
                                 turno_id = cursor.lastrowid
                                 
-                                # 2. Insertamos los servicios elegidos en la tabla intermedia
+                                # 2. Insertamos todos los servicios seleccionados en la tabla intermedia turno_servicios
                                 for serv_nombre in servicios_seleccionados:
                                     serv_id = servicios_dict[serv_nombre]
                                     cursor.execute(
@@ -212,6 +230,8 @@ else:
                                 
                                 db.commit()
                                 db.close()
+                                
+                                st.session_state['turno_preseleccionado'] = None
                                 st.success("✅ ¡Turno agendado con éxito!")
                         except Exception as e:
                             st.error(f"Error al guardar el turno: {e}")
@@ -225,7 +245,6 @@ else:
                 db = conectar_db()
                 if db:
                     cursor = db.cursor(dictionary=True)
-                    # Consultamos el turno y unimos mediante GROUP_CONCAT los nombres reales de la tabla servicios
                     cursor.execute("""
                         SELECT t.id, 
                                GROUP_CONCAT(s.nombre_servicio SEPARATOR ', ') as nombres_servicios, 
@@ -260,7 +279,6 @@ else:
                                         db_del = conectar_db()
                                         if db_del:
                                             cur_del = db_del.cursor()
-                                            # Borramos primero de la tabla intermedia y luego el turno
                                             cur_del.execute("DELETE FROM turno_servicios WHERE turno_id = %s", (turno['id'],))
                                             cur_del.execute("DELETE FROM turnos WHERE id = %s", (turno['id'],))
                                             db_del.commit()
