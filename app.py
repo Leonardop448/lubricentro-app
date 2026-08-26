@@ -4,34 +4,45 @@ from database.conexion import conectar_db
 
 st.set_page_config(page_title="Lubricentro El Calvo", page_icon="🛢️", layout="centered")
 
-# --- ESTILOS CSS PERSONALIZADOS ---
+# --- ESTILOS CSS DEFINITIVOS (Todo oscuro y legible) ---
 st.markdown("""
     <style>
+    /* Fondo general de toda la aplicación */
     .stApp {
-        background-color: #121212;
-        background-image: radial-gradient(circle at 50% 50%, #222222 0%, #111111 100%);
+        background-color: #121212 !important;
     }
+    
+    /* Contenedor central */
     .main .block-container {
-        background-color: #1e1e1e;
+        background-color: #1e1e1e !important;
         padding: 2.5rem;
         border-radius: 16px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
         border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #ffffff;
+        color: #ffffff !important;
         max-width: 800px;
         margin-top: 2rem;
     }
-    /* Estilos globales de texto en la ventana principal */
-    h1, h2, h3, p, label, span {
+
+    /* Forzar texto blanco en toda la app */
+    h1, h2, h3, h4, h5, h6, p, label, span, div {
         color: #ffffff !important;
     }
     
-    /* CORRECCIÓN BARRA LATERAL: Fondo oscuro y letras visibles */
+    /* BARRA LATERAL OSCURA Y LIMPIA */
     [data-testid="stSidebar"] {
-        background-color: #1a1a1a !important;
+        background-color: #181818 !important;
+        border-right: 1px solid #333 !important;
     }
     [data-testid="stSidebar"] * {
         color: #ffffff !important;
+    }
+    
+    /* Cajas de texto, contenedores y elementos de Streamlit */
+    div[data-baseweb="select"] > div, input, textarea {
+        background-color: #2a2a2a !important;
+        color: white !important;
+        border: 1px solid #444 !important;
     }
 
     div.stButton > button {
@@ -47,14 +58,9 @@ st.markdown("""
         background-color: #ff2424;
         color: white;
     }
-    input, select, textarea {
-        border-radius: 8px !important;
-        background-color: #2a2a2a !important;
-        color: white !important;
-        border: 1px solid #444 !important;
-    }
+
     .slot-libre {
-        background-color: rgba(46, 204, 113, 0.2);
+        background-color: rgba(46, 204, 113, 0.25);
         border: 1px solid #2ecc71;
         padding: 8px;
         border-radius: 8px;
@@ -63,7 +69,7 @@ st.markdown("""
         font-size: 0.9rem;
     }
     .slot-ocupado {
-        background-color: rgba(231, 76, 60, 0.2);
+        background-color: rgba(231, 76, 60, 0.25);
         border: 1px solid #e74c3c;
         padding: 8px;
         border-radius: 8px;
@@ -148,8 +154,8 @@ if st.session_state['user'] is None:
 else:
     user = st.session_state['user']
     st.sidebar.write(f"👤 Hola, **{user['nombre']}**")
-    st.sidebar.write(f"Vehículo: `{user['placa']}`")
-    st.sidebar.write(f"Rol: `{user['rol'].upper()}`")
+    st.sidebar.write(f"Vehículo: {user['placa']}")
+    st.sidebar.write(f"Rol: {user['rol'].upper()}")
     
     if st.sidebar.button("Cerrar Sesión", key="btn_logout"):
         st.session_state['user'] = None
@@ -179,7 +185,6 @@ else:
                 turnos_ocupados = [str(t['fecha_hora_turno']) for t in cursor.fetchall()]
                 db.close()
                 
-            # Diccionarios para traducir al español los días y meses
             dias_es = {
                 'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles',
                 'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
@@ -190,7 +195,6 @@ else:
                 'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'
             }
                 
-            # Horarios de atención de 1 en 1 hora desde las 8:00 AM hasta las 5:00 PM (17:00)
             horas_atencion = [f"{h:02d}:00:00" for h in range(8, 18)]
             
             for i in range(5):
@@ -203,7 +207,6 @@ else:
                 
                 st.markdown(f"**📅 Día: {dia_espanol} {dia_actual.day} de {mes_espanol}**")
                 
-                # Mostramos en filas de 4 columnas para que se organicen bien las horas
                 for row_start in range(0, len(horas_atencion), 4):
                     chunk_horas = horas_atencion[row_start:row_start+4]
                     cols = st.columns(len(chunk_horas))
@@ -238,7 +241,6 @@ else:
                 
                 fecha_turno = st.date_input("Fecha para el turno", min_value=datetime.today(), key="sel_fecha")
                 
-                # Selector de horas de 1 en 1 de 8 AM a 5 PM
                 horas_disponibles_str = [f"{h:02d}:00:00" for h in range(8, 18)]
                 hora_turno = st.selectbox("Hora disponible", horas_disponibles_str, key="sel_hora")
                 
