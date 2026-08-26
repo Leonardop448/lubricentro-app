@@ -1,18 +1,29 @@
 import os
+import streamlit as st
 import mysql.connector
 from mysql.connector import Error
 
 def conectar_db():
     try:
+        host = os.getenv("DB_HOST")
+        database = os.getenv("DB_NAME")
+        user = os.getenv("DB_USER")
+        password = os.getenv("DB_PASS")
+        port = int(os.getenv("DB_PORT", 3306))
+        
+        # Validación rápida para ver qué variable llega vacía si ocurre un error
+        if not all([host, database, user, password]):
+            st.error(f"Faltan variables: HOST={host}, DB={database}, USER={user}, PASS={'Configurada' if password else 'Vacía'}")
+
         connection = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "automatizacion_basedatosn8n"),
-            database="turnoselcalvo",  # <- Forzamos explícitamente tu base de datos
-            user="root",               # <- Usamos el usuario con permisos globales
-            password=os.getenv("DB_PASS", "w6o23fph7omww3no34r"),  # <- Contraseña raíz de tu panel
-            port=int(os.getenv("DB_PORT", 3306))
+            host=host,
+            database=database,
+            user=user,
+            password=password,
+            port=port
         )
         if connection.is_connected():
             return connection
     except Error as e:
-        print(f"Error al conectar a la base de datos: {e}")
+        st.error(f"Error detallado de MySQL: {e}")
         return None
