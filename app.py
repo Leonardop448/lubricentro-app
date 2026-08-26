@@ -74,33 +74,41 @@ if st.session_state['user'] is None:
     
     with tab1:
         st.write("")
-        placa_login = st.text_input("🚗 Ingrese la Placa de su vehículo (Ej: ABC123)").upper().strip()
-        if st.button("Ingresar al Sistema"):
+        placa_login = st.text_input("🚗 Ingrese la Placa de su vehículo (Ej: ABC123)", key="input_login_placa").upper().strip()
+        if st.button("Ingresar al Sistema", key="btn_login"):
             if placa_login:
-                db = conectar_db()
-                if db:
-                    cursor = db.cursor(dictionary=True)
-                    cursor.execute("SELECT * FROM usuarios WHERE placa = %s", (placa_login,))
-                    user = cursor.fetchone()
-                    db.close()
-                    if user:
-                        st.session_state['user'] = user
-                        st.rerun()
+                try:
+                    db = conectar_db()
+                    if db:
+                        cursor = db.cursor(dictionary=True)
+                        cursor.execute("SELECT * FROM usuarios WHERE placa = %s", (placa_login,))
+                        user = cursor.fetchone()
+                        db.close()
+                        
+                        if user:
+                            st.session_state['user'] = user
+                            st.success("¡Acceso exitoso! Cargando panel...")
+                            st.rerun()
+                        else:
+                            st.error(f"⚠️ La placa '{placa_login}' no está registrada. Regístrese en la pestaña de al lado.")
                     else:
-                        st.error("⚠️ Vehículo no encontrado. Regístrese en la pestaña de al lado.")
+                        st.error("⚠️ Error de conexión con la base de datos.")
+                except Exception as e:
+                    st.error(f"⚠️ Error en el sistema: {e}")
             else:
                 st.warning("⚠️ Por favor ingrese la placa.")
                     
     with tab2:
         st.write("")
-        reg_nombre = st.text_input("Nombre completo")
-        reg_tel = st.text_input("Teléfono de contacto")
-        reg_placa = st.text_input("Placa del vehículo (Será tu usuario)").upper().strip()
-        if st.button("Registrarme y Acceder"):
+        reg_nombre = st.text_input("Nombre completo", key="reg_nombre")
+        reg_tel = st.text_input("Teléfono de contacto", key="reg_tel")
+        reg_placa = st.text_input("Placa del vehículo (Será tu usuario)", key="reg_placa").upper().strip()
+        
+        if st.button("Registrarme y Acceder", key="btn_register"):
             if reg_nombre and reg_tel and reg_placa:
-                db = conectar_db()
-                if db:
-                    try:
+                try:
+                    db = conectar_db()
+                    if db:
                         cursor = db.cursor()
                         cursor.execute(
                             "INSERT INTO usuarios (nombre, telefono, placa, rol) VALUES (%s, %s, %s, 'cliente')",
@@ -114,10 +122,12 @@ if st.session_state['user'] is None:
                             "id": user_id, "nombre": reg_nombre, 
                             "telefono": reg_tel, "placa": reg_placa, "rol": "cliente"
                         }
-                        st.success("¡Registro exitoso!")
+                        st.success("¡Registro exitoso! Entrando...")
                         st.rerun()
-                    except Exception as e:
-                        st.error(f"⚠️ La placa o el teléfono ya están registrados. Detalle: {e}")
+                    else:
+                        st.error("⚠️ No se pudo conectar a la base de datos.")
+                except Exception as e:
+                    st.error(f"⚠️ Error al registrar. Es posible que la placa o el teléfono ya existan. Detalle: {e}")
             else:
                 st.warning("⚠️ Por favor completa todos los campos.")
 else:
@@ -126,7 +136,7 @@ else:
     st.sidebar.write(f"Vehículo: `{user['placa']}`")
     st.sidebar.write(f"Rol: `{user['rol'].upper()}`")
     
-    if st.sidebar.button("Cerrar Sesión"):
+    if st.sidebar.button("Cerrar Sesión", key="btn_logout"):
         st.session_state['user'] = None
         st.rerun()
         
@@ -138,7 +148,6 @@ else:
         st.header("🚗 Panel de Turnos - Cliente")
         st.success(f"Bienvenido. Vehículo asociado: **{user['placa']}**")
         
-        # Opciones principales del cliente solicitadas
         menu_cliente = st.radio("¿Qué deseas hacer?", ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"], horizontal=True)
         
         st.write("---")
@@ -146,37 +155,33 @@ else:
         if menu_cliente == "📅 Calendario Semanal y Disponibilidad":
             st.subheader("🗓️ Estado de Turnos de la Semana (Verde: Libre | Rojo: Ocupado)")
             
-            # Mostrar los próximos 7 días
             hoy = datetime.today().date()
             db = conectar_db()
             turnos_ocupados = []
             if db:
                 cursor = db.cursor(dictionary=True)
                 cursor.execute("SELECT fecha_hora_turno FROM turnos WHERE estado != 'cancelado'")
-                turnos_ocupados = [t['fecha_hora_turno'].strftime('%Y-%m-%d %H:%M') for t in cursor.fetchall()]
+                # Normalizar fechas para comparar de forma segura
+                turnos_ocupados = [str(t['fecha_hora_turno']) for t in cursor.fetchall()]
                 db.close()
                 
-            # Horarios de atención simulados del lubricentro (Ej: 8:00 AM a 4:00 PM)
-            horas_atencion = ["08:00", "10:00", "14:00", "16:00"]
+            horas_atencion = ["08:00:00", "10:00:00", "14:00:00", "16:00:00"]
             
-            for i in range(5): # Mostrar 5 días hábiles
+            for i in range(5):
                 dia_actual = hoy + timedelta(days=i)
                 st.markdown(f"**📅 Día: {dia_actual.strftime('%A %d de %B')}**")
                 
                 cols = st.columns(len(horas_atencion))
                 for idx, hora in enumerate(horas_atencion):
-                    fecha_str = f"{dia_actual} {hora}:00"
-                    # Verificamos si la fecha y hora exacta está ocupada
-                    slot_key = f"{dia_actual} {hora}"
-                    
-                    # Comprobación simple en base a la lista de ocupados
-                    is_ocupado = any(slot_key in t for t in turnos_ocupados)
+                    slot_datetime_str = f"{dia_actual} {hora}"
+                    is_ocupado = any(slot_datetime_str in t for t in turnos_ocupados)
                     
                     with cols[idx]:
+                        hora_corta = hora[:5]
                         if is_ocupado:
-                            st.markdown(f"<div class='slot-ocupado'>🔴 <b>{hora}</b><br>Ocupado</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div class='slot-ocupado'>🔴 <b>{hora_corta}</b><br>Ocupado</div>", unsafe_allow_html=True)
                         else:
-                            st.markdown(f"<div class='slot-libre'>🟢 <b>{hora}</b><br>Disponible</div>", unsafe_allow_html=True)
+                            st.markdown(f"<div class='slot-libre'>🟢 <b>{hora_corta}</b><br>Disponible</div>", unsafe_allow_html=True)
                 st.write("")
 
         elif menu_cliente == "➕ Agendar Turno Nuevo":
@@ -192,19 +197,19 @@ else:
                 db.close()
             
             if servicios_dict:
-                servicio_seleccionado = st.selectbox("Seleccione el Servicio", list(servicios_dict.keys()))
+                servicio_seleccionado = st.selectbox("Seleccione el Servicio", list(servicios_dict.keys()), key="sel_serv")
                 servicio_id = servicios_dict[servicio_seleccionado]
                 
-                fecha_turno = st.date_input("Fecha para el turno", min_value=datetime.today())
-                hora_turno = st.selectbox("Hora disponible", ["08:00:00", "10:00:00", "14:00:00", "16:00:00"])
+                fecha_turno = st.date_input("Fecha para el turno", min_value=datetime.today(), key="sel_fecha")
+                hora_turno = st.selectbox("Hora disponible", ["08:00:00", "10:00:00", "14:00:00", "16:00:00"], key="sel_hora")
                 
-                observaciones = st.text_area("Observaciones adicionales", placeholder="Ej: Aceite semisintético...")
+                observaciones = st.text_area("Observaciones adicionales", placeholder="Ej: Aceite semisintético...", key="sel_obs")
                 
-                if st.button("Confirmar y Agendar Turno"):
+                if st.button("Confirmar y Agendar Turno", key="btn_agendar"):
                     fecha_hora_completa = f"{fecha_turno} {hora_turno}"
-                    db = conectar_db()
-                    if db:
-                        try:
+                    try:
+                        db = conectar_db()
+                        if db:
                             cursor = db.cursor()
                             cursor.execute(
                                 """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
@@ -214,37 +219,40 @@ else:
                             db.commit()
                             db.close()
                             st.success("✅ ¡Turno agendado con éxito!")
-                        except Exception as e:
-                            st.error(f"Error al guardar el turno (Es posible que ese horario ya esté tomado): {e}")
+                    except Exception as e:
+                        st.error(f"Error al guardar el turno (Es posible que ya exista una reserva a esa hora): {e}")
             else:
-                st.warning("No hay servicios configurados.")
+                st.warning("⚠️ No hay servicios configurados en la base de datos.")
 
         elif menu_cliente == "⚙️ Gestionar mis Turnos":
             st.subheader("📋 Mis Turnos Separados")
-            db = conectar_db()
-            if db:
-                cursor = db.cursor(dictionary=True)
-                cursor.execute("""
-                    SELECT t.id, s.nombre_servicio, t.fecha_hora_turno, t.estado, t.observaciones 
-                    FROM turnos t
-                    JOIN servicios s ON t.servicio_id = s.id
-                    WHERE t.usuario_id = %s
-                    ORDER BY t.fecha_hora_turno DESC
-                """, (user['id'],))
-                mis_turnos = cursor.fetchall()
-                db.close()
-                
-                if mis_turnos:
-                    for turno in mis_turnos:
-                        estado_color = "🟡" if turno['estado'] == 'pendiente' else "🔵" if turno['estado'] == 'en_proceso' else "🟢" if turno['estado'] == 'finalizado' else "🔴"
-                        with st.container():
-                            st.markdown(f"""
-                            * **ID Turno:** #{turno['id']}
-                            * **Servicio:** {turno['nombre_servicio']}
-                            * **Fecha y Hora:** {turno['fecha_hora_turno']}
-                            * **Estado:** {estado_color} `{turno['estado'].upper()}`
-                            * **Observaciones:** {turno['observaciones'] if turno['observaciones'] else 'Ninguna'}
-                            -----------------------------------
-                            """)
-                else:
-                    st.info("No tienes turnos separados en este momento.")
+            try:
+                db = conectar_db()
+                if db:
+                    cursor = db.cursor(dictionary=True)
+                    cursor.execute("""
+                        SELECT t.id, s.nombre_servicio, t.fecha_hora_turno, t.estado, t.observaciones 
+                        FROM turnos t
+                        JOIN servicios s ON t.servicio_id = s.id
+                        WHERE t.usuario_id = %s
+                        ORDER BY t.fecha_hora_turno DESC
+                    """, (user['id'],))
+                    mis_turnos = cursor.fetchall()
+                    db.close()
+                    
+                    if mis_turnos:
+                        for turno in mis_turnos:
+                            estado_color = "🟡" if turno['estado'] == 'pendiente' else "🔵" if turno['estado'] == 'en_proceso' else "🟢" if turno['estado'] == 'finalizado' else "🔴"
+                            with st.container():
+                                st.markdown(f"""
+                                * **ID Turno:** #{turno['id']}
+                                * **Servicio:** {turno['nombre_servicio']}
+                                * **Fecha y Hora:** {turno['fecha_hora_turno']}
+                                * **Estado:** {estado_color} `{turno['estado'].upper()}`
+                                * **Observaciones:** {turno['observaciones'] if turno['observaciones'] else 'Ninguna'}
+                                -----------------------------------
+                                """)
+                    else:
+                        st.info("No tienes turnos separados en este momento.")
+            except Exception as e:
+                st.error(f"Error al cargar los turnos: {e}")
