@@ -188,20 +188,23 @@ else:
                 
                 pre_fecha = datetime.today()
                 pre_hora_index = 0
-                horas_disponibles_str = [f"{h:02d}:00:00" for h in range(8, 18)]
+                horas_atencion_24 = [f"{h:02d}:00:00" for h in range(8, 18)]
+                horas_12h_labels = [datetime.strptime(h, "%H:%M:%S").strftime("%I:%M %p") for h in horas_atencion_24]
                 
                 if st.session_state['turno_preseleccionado']:
                     pre_fecha = st.session_state['turno_preseleccionado']['fecha']
                     h_target = st.session_state['turno_preseleccionado']['hora']
-                    if h_target in horas_disponibles_str:
-                        pre_hora_index = horas_disponibles_str.index(h_target)
+                    if h_target in horas_atencion_24:
+                        pre_hora_index = horas_atencion_24.index(h_target)
                 
                 fecha_turno = st.date_input("Fecha para el turno", value=pre_fecha, min_value=datetime.today(), key="sel_fecha")
                 
                 if fecha_turno.weekday() == 6:
                     st.error("⚠️ El lubricentro no labora los domingos. Por favor elija de lunes a sábado.")
                 
-                hora_turno = st.selectbox("Hora disponible", horas_disponibles_str, index=pre_hora_index, key="sel_hora")
+                hora_seleccionada_label = st.selectbox("Hora disponible", horas_12h_labels, index=pre_hora_index, key="sel_hora")
+                idx_sel = horas_12h_labels.index(hora_seleccionada_label)
+                hora_turno = horas_atencion_24[idx_sel]
                 
                 observaciones = st.text_area("Observaciones adicionales", placeholder="Ej: Cambiar también filtro de caja...", key="sel_obs")
                 
