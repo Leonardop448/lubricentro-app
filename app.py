@@ -6,28 +6,25 @@ st.set_page_config(page_title="Lubricentro El Calvo", page_icon="🛢️", layou
 # --- ESTILOS CSS PERSONALIZADOS (Fondo, Tarjetas y Móvil) ---
 st.markdown("""
     <style>
-    /* Fondo general de la aplicación con una textura o imagen de taller profesional */
+    /* Fondo oscuro industrial moderno y elegante */
     .stApp {
-        background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), 
-                          url("https://images.unsplash.com/photo-1486006920555-c77dce18193b?q=80&w=1600&auto=format&fit=crop");
-        background-size: cover;
-        background-position: center;
-        background-attachment: fixed;
+        background-color: #121212;
+        background-image: radial-gradient(circle at 50% 50%, #222222 0%, #111111 100%);
     }
 
-    /* Contenedor central translúcido para que resalte la información */
+    /* Contenedor central tipo tarjeta flotante */
     .main .block-container {
-        background-color: rgba(25, 25, 25, 0.85);
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        backdrop-filter: blur(4px);
-        border: 1px solid rgba(255, 255, 255, 0.18);
+        background-color: #1e1e1e;
+        padding: 2.5rem;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         color: #ffffff;
-        margin-top: 2rem;
+        max-width: 600px;
+        margin-top: 3rem;
     }
 
-    /* Adaptar textos y títulos a blanco para contraste */
+    /* Textos claros */
     h1, h2, h3, p, label, span {
         color: #ffffff !important;
     }
@@ -48,9 +45,12 @@ st.markdown("""
         color: white;
     }
 
-    /* Estilo de los inputs de texto */
+    /* Inputs estilizados */
     input {
         border-radius: 8px !important;
+        background-color: #2a2a2a !important;
+        color: white !important;
+        border: 1px solid #444 !important;
     }
     </style>
 """, unsafe_allow_html=True)
