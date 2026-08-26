@@ -132,7 +132,7 @@ else:
         
     if user['rol'] == 'administrador':
         st.header("📊 Panel de Administración - Lubricentro El Calvo")
-        st.write(f"Bienvenida, Administradora **{user['nombre']}**")
+        st.write(f"Bienvenida, Administrador **{user['nombre']}**")
         st.write("---")
         
         # Pestañas del Panel de Administración
