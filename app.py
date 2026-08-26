@@ -252,6 +252,10 @@ else:
                 
                 fecha_turno = st.date_input("Fecha para el turno", min_value=datetime.today(), key="sel_fecha")
                 
+                # Validar si el usuario seleccionó un domingo (weekday() == 6)
+                if fecha_turno.weekday() == 6:
+                    st.error("⚠️ El lubricentro no labora los domingos. Por favor seleccione un día entre lunes y sábado.")
+                
                 horas_disponibles_str = [f"{h:02d}:00:00" for h in range(8, 18)]
                 hora_turno = st.selectbox("Hora disponible", horas_disponibles_str, key="sel_hora")
                 
