@@ -98,11 +98,17 @@ else:
         st.header("🚗 Panel de Turnos - Cliente")
         st.success(f"Bienvenido **{user['nombre']}** Vehículo: **{user['placa']}**")
         
-        menu_cliente = st.radio("¿Qué deseas hacer?", ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"], horizontal=True)
+        # --- PEGA ESTO AQUÍ ---
+        menu_opciones = ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"]
+        default_index = 1 if st.session_state['turno_preseleccionado'] is not None else 0
+        
+        menu_cliente = st.radio("¿Qué deseas hacer?", menu_opciones, index=default_index, horizontal=True)
+        # ---------------------
         
         st.write("---")
         
         if menu_cliente == "📅 Calendario Semanal y Disponibilidad":
+            # ... resto de tu código ...
             st.subheader("🗓️ Estado de Turnos (Lunes a Sábado) - Haz clic en un horario libre para agendar")
             
             hoy = datetime.today().date()
