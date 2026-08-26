@@ -50,7 +50,6 @@ if st.session_state['user'] is None:
         reg_pass = st.text_input("Contraseña de acceso", type="password", key="reg_pass")
         
         if st.button("Registrarme y Acceder", key="btn_register"):
-            # Verificamos que la placa sea alfanumérica pura (sin espacios ni símbolos)
             if reg_placa and not reg_placa.isalnum():
                 st.error("⚠️ La placa no debe contener espacios, guiones ni caracteres especiales (ej: usa ABC123 en lugar de ABC-123).")
             elif reg_nombre and reg_tel and reg_placa and reg_pass:
@@ -58,7 +57,7 @@ if st.session_state['user'] is None:
                     db = conectar_db()
                     if db:
                         cursor = db.cursor()
-                        # 1. Registrar al usuario
+                        # 1. Registrar al usuario y obtener su ID generado
                         cursor.execute(
                             "INSERT INTO usuarios (nombre, telefono, placa, password, rol) VALUES (%s, %s, %s, %s, 'cliente')",
                             (reg_nombre, reg_tel, reg_placa, reg_pass)
@@ -66,13 +65,13 @@ if st.session_state['user'] is None:
                         db.commit()
                         user_id = cursor.lastrowid
                         
-                        # 2. Registrar el vehículo en la tabla 'vehiculos'
-                        cursor.execute("SELECT id FROM vehiculos WHERE placa = %s", (reg_placa,))
+                        # 2. Registrar el vehículo usando el mismo ID del usuario
+                        cursor.execute("SELECT id FROM vehiculos WHERE id = %s OR placa = %s", (user_id, reg_placa))
                         veh = cursor.fetchone()
                         if not veh:
                             cursor.execute(
-                                "INSERT INTO vehiculos (placa, propietario, telefono) VALUES (%s, %s, %s)",
-                                (reg_placa, reg_nombre, reg_tel)
+                                "INSERT INTO vehiculos (id, placa, propietario, telefono) VALUES (%s, %s, %s, %s)",
+                                (user_id, reg_placa, reg_nombre, reg_tel)
                             )
                             db.commit()
                         
