@@ -16,7 +16,7 @@ if st.session_state['user'] is None:
     
     with tab1:
         st.write("")
-        placa_login = st.text_input("🚗 Placa del vehículo", key="input_login_placa").upper().strip()
+        placa_login = st.text_input("🚗 Placa del vehículo sin espacios ni caracteres especiales", key="input_login_placa").upper().strip()
         pass_login = st.text_input("🔒 Contraseña", type="password", key="input_login_pass")
         
         if st.button("Ingresar al Sistema", key="btn_login"):
@@ -94,7 +94,7 @@ else:
         
     else:
         st.header("🚗 Panel de Turnos - Cliente")
-        st.success(f"Bienvenido. Vehículo asociado: **{user['placa']}**")
+        st.success(f"Bienvenido **{user['nombre']}** Vehículo: **{user['placa']}**")
         
         menu_cliente = st.radio("¿Qué deseas hacer?", ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"], horizontal=True)
         
