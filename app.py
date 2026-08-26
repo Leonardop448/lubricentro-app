@@ -191,12 +191,11 @@ else:
                 for hora in horas_atencion_24:
                     if dia_actual == hoy:
                         hora_dt = datetime.strptime(hora, "%H:%M:%S").time()
-                        # Comparamos estrictamente con la hora de Colombia
-                        # Si la hora en punto del turno es mayor o igual a la hora actual de Colombia, se muestra
-                        if hora_dt.hour >= ahora_colombia.hour:
+                        # Comparamos incluyendo los minutos: si la hora del turno es mayor a la hora actual, se muestra
+                        if hora_dt > ahora_colombia.time():
                             horas_a_mostrar.append(hora)
                     else:
-                        # Para días futuros, mostramos todas las horas completas (de 8 AM a 5 PM)
+                        # Para días futuros, mostramos todas las horas completas
                         horas_a_mostrar.append(hora)
                 
                 # Distribuimos las horas válidas en filas de 4 columnas
