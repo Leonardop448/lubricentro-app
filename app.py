@@ -16,7 +16,7 @@ if st.session_state['user'] is None:
     
     with tab1:
         st.write("")
-        placa_login = st.text_input("🚗 Placa del vehículo", key="input_login_placa").upper().strip()
+        placa_login = st.text_input("🚗 Placa del vehículo sin espacios ni lineas", key="input_login_placa").upper().strip()
         pass_login = st.text_input("🔒 Contraseña", type="password", key="input_login_pass")
         
         if st.button("Ingresar al Sistema", key="btn_login"):
@@ -46,7 +46,7 @@ if st.session_state['user'] is None:
         st.write("")
         reg_nombre = st.text_input("Nombre completo", key="reg_nombre")
         reg_tel = st.text_input("Teléfono de contacto", key="reg_tel")
-        reg_placa = st.text_input("Placa del vehículo (Será tu usuario)", key="reg_placa").upper().strip()
+        reg_placa = st.text_input("Placa del vehículo sin espacios ni líneas (Será tu usuario)", key="reg_placa").upper().strip()
         reg_pass = st.text_input("Contraseña de acceso", type="password", key="reg_pass")
         
         if st.button("Registrarme y Acceder", key="btn_register"):
