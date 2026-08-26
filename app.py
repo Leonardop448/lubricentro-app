@@ -167,7 +167,7 @@ else:
         
     else:
         st.header("🚗 Panel de Turnos - Cliente")
-        st.success(f"Bienvenido. Vehículo asociado: **{user['placa']}**")
+        st.success(f"Bienvenido. **{user['nombre']}** Placa: **{user['placa']}**")
         
         menu_cliente = st.radio("¿Qué deseas hacer?", ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"], horizontal=True)
         
@@ -187,7 +187,7 @@ else:
                 
             dias_es = {
                 'Monday': 'Lunes', 'Tuesday': 'Martes', 'Wednesday': 'Miércoles',
-                'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado', 'Sunday': 'Domingo'
+                'Thursday': 'Jueves', 'Friday': 'Viernes', 'Saturday': 'Sábado'
             }
             meses_es = {
                 'January': 'Enero', 'February': 'Febrero', 'March': 'Marzo', 'April': 'Abril',
@@ -197,8 +197,19 @@ else:
                 
             horas_atencion = [f"{h:02d}:00:00" for h in range(8, 18)]
             
-            for i in range(5):
-                dia_actual = hoy + timedelta(days=i)
+            # Recorremos hasta completar 6 días hábiles (Lunes a Sábado)
+            dias_mostrados = 0
+            dia_offset = 0
+            
+            while dias_mostrados < 6:
+                dia_actual = hoy + timedelta(days=dia_offset)
+                dia_offset += 1
+                
+                # Si es domingo (weekday == 6), lo saltamos
+                if dia_actual.weekday() == 6:
+                    continue
+                
+                dias_mostrados += 1
                 nombre_dia_en = dia_actual.strftime('%A')
                 nombre_mes_en = dia_actual.strftime('%B')
                 
