@@ -290,7 +290,6 @@ else:
                                     
                                     st.session_state['turno_preseleccionado'] = None
                                     st.success("✅ ¡Turno agendado con éxito!")
-                                    st.rerun()
                         except Exception as e:
                             st.error(f"Error al guardar el turno: {e}")
             else:
