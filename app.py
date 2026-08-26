@@ -1,33 +1,75 @@
 import streamlit as st
 from database.conexion import conectar_db
 
-st.set_page_config(page_title="Lubricentro El Calvo", page_icon="🚗", layout="centered")
+st.set_page_config(page_title="Lubricentro El Calvo", page_icon="🛢️", layout="centered")
 
-# Estilos CSS para botones aptos para móviles (Touch-friendly)
+# --- ESTILOS CSS PERSONALIZADOS (Fondo, Tarjetas y Móvil) ---
 st.markdown("""
     <style>
+    /* Fondo general de la aplicación con una textura o imagen de taller profesional */
+    .stApp {
+        background-image: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7)), 
+                          url("https://images.unsplash.com/photo-1486006920555-c77dce18193b?q=80&w=1600&auto=format&fit=crop");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+
+    /* Contenedor central translúcido para que resalte la información */
+    .main .block-container {
+        background-color: rgba(25, 25, 25, 0.85);
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        color: #ffffff;
+        margin-top: 2rem;
+    }
+
+    /* Adaptar textos y títulos a blanco para contraste */
+    h1, h2, h3, p, label, span {
+        color: #ffffff !important;
+    }
+
+    /* Botones grandes y touch-friendly para celulares */
     div.stButton > button {
         width: 100%;
         border-radius: 10px;
-        height: 3em;
+        height: 3.2em;
         font-weight: bold;
+        background-color: #ff4b4b;
+        color: white;
+        border: none;
+    }
+    
+    div.stButton > button:hover {
+        background-color: #ff2424;
+        color: white;
+    }
+
+    /* Estilo de los inputs de texto */
+    input {
+        border-radius: 8px !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🛢️ Lubricentro El Calvo - Gestion de Turnos")
+st.title("🛢️ Lubricentro El Calvo")
+st.subheader("Gestión Rápida de Turnos y Servicios")
 
 # Control de sesión en Streamlit
 if 'user' not in st.session_state:
     st.session_state['user'] = None
 
 if st.session_state['user'] is None:
-    st.subheader("🔑 Acceso o Registro Rápido")
+    st.markdown("### 🔑 Acceso o Registro")
     tab1, tab2 = st.tabs(["Iniciar Sesión", "Registrarse (Clientes)"])
     
     with tab1:
-        placa_login = st.text_input("Placa del vehículo (Ej: ABC123)").upper().strip()
-        if st.button("Ingresar"):
+        st.write("")
+        placa_login = st.text_input("🚗 Ingrese la Placa de su vehículo (Ej: ABC123)").upper().strip()
+        if st.button("Ingresar al Sistema"):
             if placa_login:
                 db = conectar_db()
                 if db:
@@ -39,11 +81,12 @@ if st.session_state['user'] is None:
                         st.session_state['user'] = user
                         st.rerun()
                     else:
-                        st.error("Vehículo no encontrado. Por favor, regístrese en la pestaña de al lado.")
+                        st.error("⚠️ Vehículo no encontrado. Regístrese en la pestaña de al lado.")
             else:
-                st.warning("Por favor ingrese la placa.")
+                st.warning("⚠️ Por favor ingrese la placa.")
                     
     with tab2:
+        st.write("")
         reg_nombre = st.text_input("Nombre completo")
         reg_tel = st.text_input("Teléfono de contacto")
         reg_placa = st.text_input("Placa del vehículo (Será tu usuario)").upper().strip()
@@ -68,12 +111,13 @@ if st.session_state['user'] is None:
                         st.success("¡Registro exitoso!")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"La placa o el teléfono ya están registrados. Error: {e}")
+                        st.error(f"⚠️ La placa o el teléfono ya están registrados. Detalle: {e}")
             else:
-                st.warning("Por favor completa todos los campos.")
+                st.warning("⚠️ Por favor completa todos los campos.")
 else:
     user = st.session_state['user']
     st.sidebar.write(f"👤 Hola, **{user['nombre']}**")
+    st.sidebar.write(f"Vehículo: `{user['placa']}`")
     st.sidebar.write(f"Rol: `{user['rol'].upper()}`")
     
     if st.sidebar.button("Cerrar Sesión"):
@@ -86,5 +130,5 @@ else:
         
     else:
         st.header("🚗 Panel de Turnos - Cliente")
-        st.write(f"Vehículo asociado (Placa): **{user['placa']}**")
-        st.info("Aquí podrás agendar tu cambio de aceite, filtros o engrase y ver el estado de tus turnos.")
+        st.success(f"Bienvenido. Vehículo asociado: **{user['placa']}**")
+        st.info("Próximo paso: Aquí programaremos el agendamiento para Cambio de Aceite, Filtros y Engrasado.")
