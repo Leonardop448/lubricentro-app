@@ -322,9 +322,9 @@ else:
                                     
                                     # --- ENVÍO DE ALERTA A WHATSAPP DE LA ADMINISTRADORA ---
                                     nombres_servicios_str = ", ".join(servicios_seleccionados)
-                                    mensaje_whatsapp = f"""🚨 *Turno solicitado*
+                                    mensaje_whatsapp = f"""🚨 *Turno Solicitado*
 ID Turno: #{turno_id}
-Servicios: {nombres_servicios_str}
+Servicios a rea: {nombres_servicios_str}
 Fecha y Hora: {fecha_hora_completa}
 Estado: 🟡 PENDIENTE
 Observaciones: {observaciones if observaciones else 'Ninguna'}"""
@@ -388,7 +388,7 @@ Observaciones: {observaciones if observaciones else 'Ninguna'}"""
                                             db_del.close()
                                             
                                             # --- ENVÍO DE ALERTA DE ANULACIÓN A WHATSAPP ---
-                                            mensaje_anulacion = f"""❌ *Turno Anulado/Eliminado*
+                                            mensaje_anulacion = f"""❌ *Turno Cancelado o Eliminado*
 ID Turno: #{turno['id']}
 Servicios: {turno['nombres_servicios']}
 Fecha y Hora: {turno['fecha_hora_turno']}
