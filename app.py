@@ -16,7 +16,7 @@ if st.session_state['user'] is None:
     
     with tab1:
         st.write("")
-        placa_login = st.text_input("🚗 Placa del vehículo sin espacios ni lineas", key="input_login_placa").upper().strip()
+        placa_login = st.text_input("🚗 Placa del vehículo sin espacios ni líneas", key="input_login_placa").upper().strip()
         pass_login = st.text_input("🔒 Contraseña", type="password", key="input_login_pass")
         
         if st.button("Ingresar al Sistema", key="btn_login"):
@@ -55,7 +55,7 @@ if st.session_state['user'] is None:
                     db = conectar_db()
                     if db:
                         cursor = db.cursor()
-                        # 1. Insertar usuario
+                        # 1. Registrar al usuario
                         cursor.execute(
                             "INSERT INTO usuarios (nombre, telefono, placa, password, rol) VALUES (%s, %s, %s, %s, 'cliente')",
                             (reg_nombre, reg_tel, reg_placa, reg_pass)
@@ -63,11 +63,14 @@ if st.session_state['user'] is None:
                         db.commit()
                         user_id = cursor.lastrowid
                         
-                        # 2. Asegurar que exista el vehículo asociado para evitar errores de FK
+                        # 2. Registrar el vehículo en la tabla 'vehiculos' con sus columnas reales
                         cursor.execute("SELECT id FROM vehiculos WHERE placa = %s", (reg_placa,))
                         veh = cursor.fetchone()
                         if not veh:
-                            cursor.execute("INSERT INTO vehiculos (usuario_id, placa) VALUES (%s, %s)", (user_id, reg_placa))
+                            cursor.execute(
+                                "INSERT INTO vehiculos (placa, propietario, telefono) VALUES (%s, %s, %s)",
+                                (reg_placa, reg_nombre, reg_tel)
+                            )
                             db.commit()
                         
                         db.close()
@@ -178,7 +181,6 @@ else:
                 db.close()
             
             if servicios_dict:
-                # Selección múltiple: Puede escoger 1, 2 o los 3 servicios
                 servicios_seleccionados = st.multiselect("Seleccione uno o varios servicios", list(servicios_dict.keys()), key="sel_servicios_multi")
                 
                 fecha_turno = st.date_input("Fecha para el turno", min_value=datetime.today(), key="sel_fecha")
@@ -203,18 +205,21 @@ else:
                             if db:
                                 cursor = db.cursor()
                                 
-                                # Obtener el ID del vehículo asociado al usuario
-                                cursor.execute("SELECT id FROM vehiculos WHERE usuario_id = %s", (user['id'],))
+                                # Obtener el ID del vehículo usando su placa
+                                cursor.execute("SELECT id FROM vehiculos WHERE placa = %s", (user['placa'],))
                                 veh_row = cursor.fetchone()
                                 vehiculo_id = veh_row[0] if veh_row else None
                                 
-                                # Si por alguna razón no tiene vehículo en la tabla, lo creamos al vuelo
+                                # Si no existe en la tabla vehiculos, lo insertamos al vuelo
                                 if not vehiculo_id:
-                                    cursor.execute("INSERT INTO vehiculos (usuario_id, placa) VALUES (%s, %s)", (user['id'], user['placa']))
+                                    cursor.execute(
+                                        "INSERT INTO vehiculos (placa, propietario, telefono) VALUES (%s, %s, %s)",
+                                        (user['placa'], user['nombre'], user['telefono'])
+                                    )
                                     db.commit()
                                     vehiculo_id = cursor.lastrowid
 
-                                # Registramos un turno por cada servicio seleccionado agrupados en la misma fecha/hora
+                                # Registrar un turno por cada servicio seleccionado
                                 for serv_nombre in servicios_seleccionados:
                                     serv_id = servicios_dict[serv_nombre]
                                     cursor.execute(
