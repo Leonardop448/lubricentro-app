@@ -295,10 +295,14 @@ else:
                                         )
                                     
                                     db.commit()
-                                    db.close()
-                                    
-                                    st.session_state['turno_preseleccionado'] = None
-                                    st.success("✅ ¡Turno agendado con éxito!")
+                                db.close()
+                                
+                                st.session_state['turno_preseleccionado'] = None
+                                st.success("✅ ¡Turno agendado con éxito!")
+                                
+                                # Redirigir automáticamente al Calendario Semanal
+                                st.session_state['menu_seleccionado'] = "📅 Calendario Semanal y Disponibilidad"
+                                st.rerun()
                         except Exception as e:
                             st.error(f"Error al guardar el turno: {e}")
             else:
