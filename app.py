@@ -46,11 +46,14 @@ if st.session_state['user'] is None:
         st.write("")
         reg_nombre = st.text_input("Nombre completo", key="reg_nombre")
         reg_tel = st.text_input("Teléfono de contacto", key="reg_tel")
-        reg_placa = st.text_input("Placa del vehículo sin espacios ni líneas (Será tu usuario)", key="reg_placa").upper().strip()
+        reg_placa = st.text_input("Placa del vehículo (Sin espacios ni caracteres especiales)", key="reg_placa").upper().strip()
         reg_pass = st.text_input("Contraseña de acceso", type="password", key="reg_pass")
         
         if st.button("Registrarme y Acceder", key="btn_register"):
-            if reg_nombre and reg_tel and reg_placa and reg_pass:
+            # Verificamos que la placa sea alfanumérica pura (sin espacios ni símbolos)
+            if reg_placa and not reg_placa.isalnum():
+                st.error("⚠️ La placa no debe contener espacios, guiones ni caracteres especiales (ej: usa ABC123 en lugar de ABC-123).")
+            elif reg_nombre and reg_tel and reg_placa and reg_pass:
                 try:
                     db = conectar_db()
                     if db:
@@ -63,7 +66,7 @@ if st.session_state['user'] is None:
                         db.commit()
                         user_id = cursor.lastrowid
                         
-                        # 2. Registrar el vehículo en la tabla 'vehiculos' con sus columnas reales
+                        # 2. Registrar el vehículo en la tabla 'vehiculos'
                         cursor.execute("SELECT id FROM vehiculos WHERE placa = %s", (reg_placa,))
                         veh = cursor.fetchone()
                         if not veh:
