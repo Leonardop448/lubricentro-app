@@ -16,7 +16,7 @@ if st.session_state['user'] is None:
     
     with tab1:
         st.write("")
-        placa_login = st.text_input("🚗 Placa del vehículo sin espacios ni líneas", key="input_login_placa").upper().strip()
+        placa_login = st.text_input("🚗 Placa del vehículo", key="input_login_placa").upper().strip()
         pass_login = st.text_input("🔒 Contraseña", type="password", key="input_login_pass")
         
         if st.button("Ingresar al Sistema", key="btn_login"):
@@ -57,24 +57,13 @@ if st.session_state['user'] is None:
                     db = conectar_db()
                     if db:
                         cursor = db.cursor()
-                        # 1. Registrar al usuario y obtener su ID generado
+                        # Registramos directamente al usuario (la placa y teléfono quedan unicos en esta tabla)
                         cursor.execute(
                             "INSERT INTO usuarios (nombre, telefono, placa, password, rol) VALUES (%s, %s, %s, %s, 'cliente')",
                             (reg_nombre, reg_tel, reg_placa, reg_pass)
                         )
                         db.commit()
                         user_id = cursor.lastrowid
-                        
-                        # 2. Registrar el vehículo usando el mismo ID del usuario
-                        cursor.execute("SELECT id FROM vehiculos WHERE id = %s OR placa = %s", (user_id, reg_placa))
-                        veh = cursor.fetchone()
-                        if not veh:
-                            cursor.execute(
-                                "INSERT INTO vehiculos (id, placa, propietario, telefono) VALUES (%s, %s, %s, %s)",
-                                (user_id, reg_placa, reg_nombre, reg_tel)
-                            )
-                            db.commit()
-                        
                         db.close()
                         
                         st.session_state['user'] = {
@@ -207,27 +196,13 @@ else:
                             if db:
                                 cursor = db.cursor()
                                 
-                                # Obtener el ID del vehículo usando su placa
-                                cursor.execute("SELECT id FROM vehiculos WHERE placa = %s", (user['placa'],))
-                                veh_row = cursor.fetchone()
-                                vehiculo_id = veh_row[0] if veh_row else None
-                                
-                                # Si no existe en la tabla vehiculos, lo insertamos al vuelo
-                                if not vehiculo_id:
-                                    cursor.execute(
-                                        "INSERT INTO vehiculos (placa, propietario, telefono) VALUES (%s, %s, %s)",
-                                        (user['placa'], user['nombre'], user['telefono'])
-                                    )
-                                    db.commit()
-                                    vehiculo_id = cursor.lastrowid
-
-                                # Registrar un turno por cada servicio seleccionado
+                                # Insertamos los turnos usando el ID del usuario y asignando 0 o el mismo user_id en vehiculo_id si la tabla turnos lo pide
                                 for serv_nombre in servicios_seleccionados:
                                     serv_id = servicios_dict[serv_nombre]
                                     cursor.execute(
                                         """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
                                            VALUES (%s, %s, %s, %s, 'pendiente', %s)""",
-                                        (user['id'], vehiculo_id, serv_id, fecha_hora_completa, observaciones)
+                                        (user['id'], user['id'], serv_id, fecha_hora_completa, observaciones)
                                     )
                                 db.commit()
                                 db.close()
