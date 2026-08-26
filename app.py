@@ -13,6 +13,9 @@ if 'user' not in st.session_state:
 if 'turno_preseleccionado' not in st.session_state:
     st.session_state['turno_preseleccionado'] = None
 
+if 'menu_index' not in st.session_state:
+    st.session_state['menu_index'] = 0
+
 if st.session_state['user'] is None:
     st.subheader("🔑 Acceso o Registro de Clientes")
     tab1, tab2 = st.tabs(["Iniciar Sesión", "Registrarse"])
@@ -98,21 +101,22 @@ else:
         st.header("🚗 Panel de Turnos - Cliente")
         st.success(f"Bienvenido **{user['nombre']}** Vehículo: **{user['placa']}**")
         
-        
-        # Control inteligente de pestañas con session_state
+        # Control inteligente de pestañas mediante session_state
         menu_opciones = ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"]
         
-        # Si venimos de agendar con éxito o de hacer clic en el calendario, ajustamos la pestaña activa
-        if 'menu_seleccionado' not in st.session_state:
-            st.session_state['menu_seleccionado'] = menu_opciones[1] if st.session_state['turno_preseleccionado'] is not None else menu_opciones[0]
-            
-        menu_cliente = st.radio("¿Qué deseas hacer?", menu_opciones, key="menu_seleccionado", horizontal=True)
+        menu_cliente = st.radio("¿Qué deseas hacer?", menu_opciones, index=st.session_state['menu_index'], horizontal=True)
         
+        # Sincronizamos la pestaña activa
+        if menu_cliente == menu_opciones[0]:
+            st.session_state['menu_index'] = 0
+        elif menu_cliente == menu_opciones[1]:
+            st.session_state['menu_index'] = 1
+        elif menu_cliente == menu_opciones[2]:
+            st.session_state['menu_index'] = 2
         
         st.write("---")
         
         if menu_cliente == "📅 Calendario Semanal y Disponibilidad":
-            # ... resto de tu código ...
             st.subheader("🗓️ Estado de Turnos (Lunes a Sábado) - Haz clic en un horario libre para agendar")
             
             hoy = datetime.today().date()
@@ -134,7 +138,6 @@ else:
                 'September': 'Septiembre', 'October': 'Octubre', 'November': 'Noviembre', 'December': 'Diciembre'
             }
                 
-            # Horarios formateados en 12 horas (AM / PM) para la vista
             horas_atencion_24 = [f"{h:02d}:00:00" for h in range(8, 18)]
             
             dias_mostrados = 0
@@ -164,7 +167,6 @@ else:
                         slot_datetime_str = f"{dia_actual} {hora}"
                         is_ocupado = any(slot_datetime_str in t for t in turnos_ocupados)
                         
-                        # Convertimos la hora (ej: "08:00:00") a formato 12h (ej: "08:00 AM") para mostrarla bonita
                         hora_obj = datetime.strptime(hora, "%H:%M:%S")
                         hora_12h = hora_obj.strftime("%I:%M %p")
                         
@@ -174,12 +176,11 @@ else:
                             else:
                                 btn_key = f"btn_slot_{dia_actual}_{hora}"
                                 if st.button(f"🟢 {hora_12h}\nLibre", key=btn_key):
-                                    # Asignamos la nueva selección
                                     st.session_state['turno_preseleccionado'] = {
                                         "fecha": dia_actual,
                                         "hora": hora
                                     }
-                                    # Forzamos un marcador de cambio o recarga limpia
+                                    st.session_state['menu_index'] = 1  # Salta a Agendar Turno Nuevo
                                     st.rerun()
                 st.write("")
 
@@ -201,7 +202,6 @@ else:
                 pre_fecha = datetime.today()
                 pre_hora_str = None
                 
-                # Si hay un turno preseleccionado por el usuario, lo usamos
                 if st.session_state['turno_preseleccionado']:
                     pre_fecha = st.session_state['turno_preseleccionado']['fecha']
                     pre_hora_str = st.session_state['turno_preseleccionado']['hora']
@@ -211,13 +211,11 @@ else:
                 if fecha_turno.weekday() == 6:
                     st.error("⚠️ El lubricentro no labora los domingos. Por favor elija de lunes a sábado.")
                 
-                # Consultar directamente los turnos de esta fecha exacta desde la base de datos
                 horas_ocupadas_fecha = []
                 try:
                     db_occ = conectar_db()
                     if db_occ:
                         cur_occ = db_occ.cursor(dictionary=True)
-                        # Consultamos los turnos activos filtrando por la fecha seleccionada
                         cur_occ.execute(
                             "SELECT fecha_hora_turno FROM turnos WHERE DATE(fecha_hora_turno) = %s AND estado != 'cancelado'", 
                             (str(fecha_turno),)
@@ -227,7 +225,6 @@ else:
                         
                         for t in turnos_fecha:
                             val = t['fecha_hora_turno']
-                            # Si viene como objeto datetime, extraemos la hora directamente; si es string, usamos split
                             if isinstance(val, datetime):
                                 hora_formato = val.strftime("%H:%M:%S")
                             else:
@@ -239,7 +236,6 @@ else:
                 except Exception as e:
                     pass
                 
-                # Filtrar solo las horas que NO están ocupadas
                 todas_horas_24 = [f"{h:02d}:00:00" for h in range(8, 18)]
                 horas_disponibles_24 = [h for h in todas_horas_24 if h not in horas_ocupadas_fecha]
                 
@@ -299,14 +295,14 @@ else:
                                         )
                                     
                                     db.commit()
-                                db.close()
-                                
-                                st.session_state['turno_preseleccionado'] = None
-                                st.success("✅ ¡Turno agendado con éxito!")
-                                
-                                # Redirigir automáticamente al Calendario Semanal
-                                st.session_state['menu_seleccionado'] = "📅 Calendario Semanal y Disponibilidad"
-                                st.rerun()
+                                    db.close()
+                                    
+                                    st.session_state['turno_preseleccionado'] = None
+                                    st.success("✅ ¡Turno agendado con éxito!")
+                                    
+                                    # Devuelve automáticamente al Calendario Semanal
+                                    st.session_state['menu_index'] = 0
+                                    st.rerun()
                         except Exception as e:
                             st.error(f"Error al guardar el turno: {e}")
             else:
