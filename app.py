@@ -187,24 +187,49 @@ else:
                 servicios_seleccionados = st.multiselect("Seleccione uno o varios servicios", list(servicios_dict.keys()), key="sel_servicios_multi")
                 
                 pre_fecha = datetime.today()
-                pre_hora_index = 0
-                horas_atencion_24 = [f"{h:02d}:00:00" for h in range(8, 18)]
-                horas_12h_labels = [datetime.strptime(h, "%H:%M:%S").strftime("%I:%M %p") for h in horas_atencion_24]
+                pre_hora_str = None
                 
                 if st.session_state['turno_preseleccionado']:
                     pre_fecha = st.session_state['turno_preseleccionado']['fecha']
-                    h_target = st.session_state['turno_preseleccionado']['hora']
-                    if h_target in horas_atencion_24:
-                        pre_hora_index = horas_atencion_24.index(h_target)
+                    pre_hora_str = st.session_state['turno_preseleccionado']['hora']
                 
                 fecha_turno = st.date_input("Fecha para el turno", value=pre_fecha, min_value=datetime.today(), key="sel_fecha")
                 
                 if fecha_turno.weekday() == 6:
                     st.error("⚠️ El lubricentro no labora los domingos. Por favor elija de lunes a sábado.")
                 
-                hora_seleccionada_label = st.selectbox("Hora disponible", horas_12h_labels, index=pre_hora_index, key="sel_hora")
-                idx_sel = horas_12h_labels.index(hora_seleccionada_label)
-                hora_turno = horas_atencion_24[idx_sel]
+                # Consultar qué horas ya están ocupadas en la fecha seleccionada
+                horas_ocupadas_fecha = []
+                try:
+                    db_occ = conectar_db()
+                    if db_occ:
+                        cur_occ = db_occ.cursor(dictionary=True)
+                        cur_occ.execute(
+                            "SELECT TIME(fecha_hora_turno) as hora FROM turnos WHERE DATE(fecha_hora_turno) = %s AND estado != 'cancelado'", 
+                            (fecha_turno,)
+                        )
+                        horas_ocupadas_fecha = [str(row['hora']) for row in cur_occ.fetchall()]
+                        db_occ.close()
+                except Exception as e:
+                    pass
+                
+                # Filtrar solo las horas que NO están ocupadas
+                todas_horas_24 = [f"{h:02d}:00:00" for h in range(8, 18)]
+                horas_disponibles_24 = [h for h in todas_horas_24 if h not in horas_ocupadas_fecha]
+                
+                if horas_disponibles_24:
+                    horas_12h_labels = [datetime.strptime(h, "%H:%M:%S").strftime("%I:%M %p") for h in horas_disponibles_24]
+                    
+                    pre_hora_index = 0
+                    if pre_hora_str and pre_hora_str in horas_disponibles_24:
+                        pre_hora_index = horas_disponibles_24.index(pre_hora_str)
+                    
+                    hora_seleccionada_label = st.selectbox("Hora disponible", horas_12h_labels, index=pre_hora_index, key="sel_hora")
+                    idx_sel = horas_12h_labels.index(hora_seleccionada_label)
+                    hora_turno = horas_disponibles_24[idx_sel]
+                else:
+                    st.warning("⚠️ No hay horarios disponibles para esta fecha. Por favor selecciona otro día.")
+                    hora_turno = None
                 
                 observaciones = st.text_area("Observaciones adicionales", placeholder="Ej: Cambiar también filtro de caja...", key="sel_obs")
                 
@@ -213,6 +238,8 @@ else:
                         st.error("No se puede agendar un domingo.")
                     elif not servicios_seleccionados:
                         st.warning("⚠️ Por favor seleccione al menos un servicio.")
+                    elif not hora_turno:
+                        st.warning("⚠️ Selecciona una hora válida.")
                     else:
                         fecha_hora_completa = f"{fecha_turno} {hora_turno}"
                         try:
@@ -220,7 +247,7 @@ else:
                             if db:
                                 cursor = db.cursor(dictionary=True)
                                 
-                                # VERIFICACIÓN DE DOBLE RESERVA: Comprobamos si la hora ya está ocupada
+                                # Doble verificación de seguridad
                                 cursor.execute(
                                     "SELECT id FROM turnos WHERE fecha_hora_turno = %s AND estado != 'cancelado'", 
                                     (fecha_hora_completa,)
@@ -228,10 +255,9 @@ else:
                                 turno_existente = cursor.fetchone()
                                 
                                 if turno_existente:
-                                    st.error("⚠️ Lo sentimos, este horario ya fue reservado por otro usuario. Por favor selecciona otra hora libre en el calendario.")
+                                    st.error("⚠️ Este horario acaba de ser ocupado por otro usuario. Por favor selecciona otro.")
                                     db.close()
                                 else:
-                                    # 1. Insertamos UN SOLO turno principal en la tabla turnos
                                     cursor_insert = db.cursor()
                                     cursor_insert.execute(
                                         """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
@@ -240,7 +266,6 @@ else:
                                     )
                                     turno_id = cursor_insert.lastrowid
                                     
-                                    # 2. Insertamos todos los servicios seleccionados en la tabla intermedia turno_servicios
                                     for serv_nombre in servicios_seleccionados:
                                         serv_id = servicios_dict[serv_nombre]
                                         cursor_insert.execute(
