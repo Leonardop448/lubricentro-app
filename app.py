@@ -93,7 +93,7 @@ else:
         
     else:
         st.header("🚗 Panel de Turnos - Cliente")
-        st.success(f"Bienvenido **{user['nombre']}** - Vehículo: **{user['placa']}**")
+        st.success(f"Bienvenido **{user['nombre']}** Vehículo: **{user['placa']}**")
         
         menu_cliente = st.radio("¿Qué deseas hacer?", ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"], horizontal=True)
         
@@ -190,18 +190,21 @@ else:
                         st.warning("⚠️ Por favor seleccione al menos un servicio.")
                     else:
                         fecha_hora_completa = f"{fecha_turno} {hora_turno}"
+                        # Unimos los servicios seleccionados en un solo texto (ej: "Cambio de aceite, Cambio de filtros")
+                        servicios_texto = ", ".join(servicios_seleccionados)
+                        # Tomamos el ID del primer servicio seleccionado para cumplir con la relación de la tabla (servicio_id)
+                        primer_servicio_id = servicios_dict[servicios_seleccionados[0]]
+                        
                         try:
                             db = conectar_db()
                             if db:
                                 cursor = db.cursor()
-                                # Insertamos un registro por cada servicio seleccionado agrupados con la misma hora y observaciones
-                                for serv_nombre in servicios_seleccionados:
-                                    serv_id = servicios_dict[serv_nombre]
-                                    cursor.execute(
-                                        """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
-                                           VALUES (%s, %s, %s, %s, 'pendiente', %s)""",
-                                        (user['id'], user['id'], serv_id, fecha_hora_completa, observaciones)
-                                    )
+                                # Insertamos UNA SOLA FILA en la base de datos
+                                cursor.execute(
+                                    """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
+                                       VALUES (%s, %s, %s, %s, 'pendiente', %s)""",
+                                    (user['id'], user['id'], primer_servicio_id, fecha_hora_completa, observaciones)
+                                )
                                 db.commit()
                                 db.close()
                                 st.success("✅ ¡Turno agendado con éxito!")
@@ -213,37 +216,15 @@ else:
         elif menu_cliente == "⚙️ Gestionar mis Turnos":
             st.subheader("📋 Mis Turnos Separados")
             
-            # Botón para anular/eliminar turno si se solicita acción
-            if "turno_a_eliminar" in st.session_state and st.session_state["turno_a_eliminar"]:
-                t_id = st.session_state["turno_a_eliminar"]
-                try:
-                    db = conectar_db()
-                    if db:
-                        cursor = db.cursor()
-                        cursor.execute("DELETE FROM turnos WHERE id = %s", (t_id,))
-                        db.commit()
-                        db.close()
-                        st.success(f"🗑️ El turno #{t_id} ha sido anulado y eliminado correctamente.")
-                        del st.session_state["turno_a_eliminar"]
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Error al eliminar el turno: {e}")
-
             try:
                 db = conectar_db()
                 if db:
                     cursor = db.cursor(dictionary=True)
-                    # Agrupamos los servicios por fecha, hora y observaciones usando GROUP_CONCAT para mostrarlos en una sola tarjeta con un ID unificado
                     cursor.execute("""
-                        SELECT MIN(t.id) as id_turno, 
-                               GROUP_CONCAT(s.nombre_servicio SEPARATOR ', ') as servicios_agrupados, 
-                               t.fecha_hora_turno, 
-                               t.estado, 
-                               t.observaciones 
+                        SELECT t.id, s.nombre_servicio, t.fecha_hora_turno, t.estado, t.observaciones 
                         FROM turnos t
                         JOIN servicios s ON t.servicio_id = s.id
                         WHERE t.usuario_id = %s
-                        GROUP BY t.fecha_hora_turno, t.observaciones, t.estado
                         ORDER BY t.fecha_hora_turno DESC
                     """, (user['id'],))
                     mis_turnos = cursor.fetchall()
@@ -255,24 +236,22 @@ else:
                             
                             with st.container():
                                 st.markdown(f"""
-                                * **ID Turno:** #{turno['id_turno']}
-                                * **Servicio:** {turno['servicios_agrupados']}
+                                * **ID Turno:** #{turno['id']}
+                                * **Servicio:** {turno['nombre_servicio']}
                                 * **Fecha y Hora:** {turno['fecha_hora_turno']}
                                 * **Estado:** {estado_color} `{turno['estado'].upper()}`
                                 * **Observaciones:** {turno['observaciones'] if turno['observaciones'] else 'Ninguna'}
                                 """)
                                 
-                                # Botón para anular/eliminar este turno agrupado
-                                if st.button(f"🗑️ Anular y Eliminar Turno #{turno['id_turno']}", key=f"del_{turno['id_turno']}"):
-                                    # Eliminamos todos los registros asociados a esa fecha, hora y usuario
+                                if st.button(f"🗑️ Anular y Eliminar Turno #{turno['id']}", key=f"del_{turno['id']}"):
                                     try:
                                         db_del = conectar_db()
                                         if db_del:
                                             cur_del = db_del.cursor()
-                                            cur_del.execute("DELETE FROM turnos WHERE usuario_id = %s AND fecha_hora_turno = %s", (user['id'], turno['fecha_hora_turno']))
+                                            cur_del.execute("DELETE FROM turnos WHERE id = %s", (turno['id'],))
                                             db_del.commit()
                                             db_del.close()
-                                            st.success(f"Turno #{turno['id_turno']} eliminado con éxito.")
+                                            st.success(f"Turno #{turno['id']} eliminado con éxito.")
                                             st.rerun()
                                     except Exception as e:
                                         st.error(f"Error al eliminar: {e}")
