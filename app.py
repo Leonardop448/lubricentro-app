@@ -17,7 +17,7 @@ if 'turno_preseleccionado' not in st.session_state:
 if 'menu_index' not in st.session_state:
     st.session_state['menu_index'] = 0
 
-# --- FUNCIÓN PARA ENVIAR ALERTAS POR WHATSAPP VÍA EVOLUTION API ---
+# --- FUNCIÓN PARA ENVIAR ALERTAS POR WHATSAPP A MÚLTIPLES NÚMEROS ---
 def enviar_alerta_whatsapp(texto_mensaje):
     url = "https://automatizacion-evolution-api.3akfbq.easypanel.host/message/sendText/turnoslubricentro"
     
@@ -26,18 +26,19 @@ def enviar_alerta_whatsapp(texto_mensaje):
         "Content-Type": "application/json"
     }
     
-    payload = {
-        "number": "573233022983",  # Número de la administradora
-        "text": texto_mensaje,
-        "delay": 1200
-    }
+    # Lista con los dos números de las administradoras
+    numeros_administradoras = ["573137655289", "573122688378"]
     
-    try:
-        response = requests.post(url, json=payload, headers=headers)
-        return response.status_code == 201 or response.status_code == 200
-    except Exception as e:
-        print(f"Error al enviar WhatsApp: {e}")
-        return False
+    for numero in numeros_administradoras:
+        payload = {
+            "number": numero,
+            "text": texto_mensaje,
+            "delay": 1200
+        }
+        try:
+            requests.post(url, json=payload, headers=headers)
+        except Exception as e:
+            print(f"Error al enviar WhatsApp al número {numero}: {e}")
 # ------------------------------------------------------------------
 
 if st.session_state['user'] is None:
