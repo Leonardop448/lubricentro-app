@@ -6,9 +6,9 @@ def conectar_db():
     try:
         connection = mysql.connector.connect(
             host=os.getenv("DB_HOST", "automatizacion_basedatosn8n"),
-            database=os.getenv("DB_NAME", "turnoselcalvo"),
-            user=os.getenv("DB_USER", "mysql"),
-            password=os.getenv("DB_PASS", "ddo93fn4bx373syjhp5c"),
+            database="turnoselcalvo",  # <- Forzamos explícitamente tu base de datos
+            user="root",               # <- Usamos el usuario con permisos globales
+            password=os.getenv("DB_PASS", "w6o23fph7omww3no34r"),  # <- Contraseña raíz de tu panel
             port=int(os.getenv("DB_PORT", 3306))
         )
         if connection.is_connected():
