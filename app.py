@@ -183,14 +183,17 @@ else:
                 st.markdown(f"**📅 {dia_espanol} {dia_actual.day} de {mes_espanol}**")
                 
                 horas_a_mostrar = []
-                ahora_actual = datetime.now()
+                
+                # Obtenemos la hora actual ajustada a Colombia (UTC - 5 horas)
+                ahora_utc = datetime.utcnow()
+                ahora_colombia = ahora_utc - timedelta(hours=5)
                 
                 for hora in horas_atencion_24:
-                    # Si es el día de hoy, filtramos estrictamente las horas pasadas
                     if dia_actual == hoy:
                         hora_dt = datetime.strptime(hora, "%H:%M:%S").time()
-                        # Comparamos con la hora actual (redondeando a la hora en punto)
-                        if hora_dt.hour >= ahora_actual.hour:
+                        # Comparamos estrictamente con la hora de Colombia
+                        # Si la hora en punto del turno es mayor o igual a la hora actual de Colombia, se muestra
+                        if hora_dt.hour >= ahora_colombia.hour:
                             horas_a_mostrar.append(hora)
                     else:
                         # Para días futuros, mostramos todas las horas completas (de 8 AM a 5 PM)
