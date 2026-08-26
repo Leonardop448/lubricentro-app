@@ -99,11 +99,15 @@ else:
         st.success(f"Bienvenido **{user['nombre']}** Vehículo: **{user['placa']}**")
         
         
+        # Control inteligente de pestañas con session_state
         menu_opciones = ["📅 Calendario Semanal y Disponibilidad", "➕ Agendar Turno Nuevo", "⚙️ Gestionar mis Turnos"]
-        default_index = 1 if st.session_state['turno_preseleccionado'] is not None else 0
         
-        menu_cliente = st.radio("¿Qué deseas hacer?", menu_opciones, index=default_index, horizontal=True)
-        # ---------------------
+        # Si venimos de agendar con éxito o de hacer clic en el calendario, ajustamos la pestaña activa
+        if 'menu_seleccionado' not in st.session_state:
+            st.session_state['menu_seleccionado'] = menu_opciones[1] if st.session_state['turno_preseleccionado'] is not None else menu_opciones[0]
+            
+        menu_cliente = st.radio("¿Qué deseas hacer?", menu_opciones, key="menu_seleccionado", horizontal=True)
+        
         
         st.write("---")
         
