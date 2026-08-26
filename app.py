@@ -119,8 +119,160 @@ else:
         st.rerun()
         
     if user['rol'] == 'administrador':
-        st.header("📊 Panel de Administración")
-        st.info("Aquí verás las métricas mensuales, gráficos de clientes, opción de anular o adelantar turnos.")
+        st.header("📊 Panel de Administración - Lubricentro El Calvo")
+        st.write(f"Bienvenida, Administradora **{user['nombre']}**")
+        st.write("---")
+        
+        # Pestañas del Panel de Administración
+        admin_tab1, admin_tab2, admin_tab3 = st.tabs([
+            "📋 Gestión de Turnos Activos", 
+            "🔍 Buscar por Placa", 
+            "📊 Resumen y Estadísticas"
+        ])
+        
+        # --- PESTAÑA 1: GESTIÓN DE TURNOS ---
+        with admin_tab1:
+            st.subheader("🛠️ Administrar Turnos de los Clientes")
+            
+            try:
+                db_admin = conectar_db()
+                if db_admin:
+                    cur_adm = db_admin.cursor(dictionary=True)
+                    # Traemos todos los turnos con la info del usuario, vehículo y servicios
+                    cur_adm.execute("""
+                        SELECT t.id, 
+                               u.nombre as nombre_cliente,
+                               u.telefono as telefono_cliente,
+                               u.placa,
+                               GROUP_CONCAT(s.nombre_servicio SEPARATOR ', ') as nombres_servicios, 
+                               t.fecha_hora_turno, 
+                               t.estado, 
+                               t.observaciones 
+                        FROM turnos t
+                        JOIN usuarios u ON t.usuario_id = u.id
+                        JOIN turno_servicios ts ON t.id = ts.turno_id
+                        JOIN servicios s ON ts.servicio_id = s.id
+                        GROUP BY t.id, u.nombre, u.telefono, u.placa, t.fecha_hora_turno, t.estado, t.observaciones
+                        ORDER BY t.fecha_hora_turno ASC
+                    """)
+                    todos_los_turnos = cur_adm.fetchall()
+                    db_admin.close()
+                    
+                    if todos_los_turnos:
+                        for t in todos_los_turnos:
+                            # Formatear fecha a 12 horas para que la admin la vea clara
+                            try:
+                                dt_t = datetime.strptime(str(t['fecha_hora_turno']), "%Y-%m-%d %H:%M:%S")
+                                fecha_fmt = dt_t.strftime("%Y-%m-%d %I:%M %p")
+                            except:
+                                fecha_fmt = t['fecha_hora_turno']
+                                
+                            estado_color = "🟡" if t['estado'] == 'pendiente' else "🔵" if t['estado'] == 'en_proceso' else "🟢" if t['estado'] == 'finalizado' else "🔴"
+                            
+                            with st.container():
+                                st.markdown(f"""
+                                🆔 **Turno #{t['id']}** | {estado_color} Estado: **{t['estado'].upper()}**
+                                * 👤 **Cliente:** {t['nombre_cliente']} (📞 {t['telefono_cliente']})
+                                * 🚗 **Placa:** `{t['placa']}`
+                                * 🛠️ **Servicios:** {t['nombres_servicios']}
+                                * 📅 **Fecha y Hora:** {fecha_fmt}
+                                * 📝 **Observaciones:** {t['observaciones'] if t['observaciones'] else 'Ninguna'}
+                                """)
+                                
+                                # Botones para cambiar de estado rápidamente
+                                col_e1, col_e2, col_e3, col_e4 = st.columns(4)
+                                
+                                with col_e1:
+                                    if st.button("🟡 Pendiente", key=f"pend_{t['id']}"):
+                                        actualizar_estado_turno(t['id'], 'pendiente')
+                                with col_e2:
+                                    if st.button("🔵 En Proceso", key=f"proc_{t['id']}"):
+                                        actualizar_estado_turno(t['id'], 'en_proceso')
+                                with col_e3:
+                                    if st.button("🟢 Finalizar", key=f"fin_{t['id']}"):
+                                        actualizar_estado_turno(t['id'], 'finalizado')
+                                with col_e4:
+                                    if st.button("❌ Cancelar", key=f"canc_{t['id']}"):
+                                        actualizar_estado_turno(t['id'], 'cancelado')
+                                        
+                                st.markdown("---")
+                    else:
+                        st.info("No hay turnos registrados en el sistema.")
+            except Exception as e:
+                st.error(f"Error al cargar los turnos: {e}")
+
+        # --- PESTAÑA 2: BUSCAR POR PLACA ---
+        with admin_tab2:
+            st.subheader("🔍 Buscar Turnos por Placa de Vehículo")
+            placa_busqueda = st.text_input("Ingresa la placa a buscar (ej: ABC123)").upper().strip()
+            
+            if placa_busqueda:
+                try:
+                    db_bus = conectar_db()
+                    if db_bus:
+                        cur_b = db_bus.cursor(dictionary=True)
+                        cur_b.execute("""
+                            SELECT t.id, u.nombre, u.telefono, u.placa,
+                                   GROUP_CONCAT(s.nombre_servicio SEPARATOR ', ') as nombres_servicios, 
+                                   t.fecha_hora_turno, t.estado, t.observaciones 
+                            FROM turnos t
+                            JOIN usuarios u ON t.usuario_id = u.id
+                            JOIN turno_servicios ts ON t.id = ts.turno_id
+                            JOIN servicios s ON ts.servicio_id = s.id
+                            WHERE u.placa LIKE %s
+                            GROUP BY t.id, u.nombre, u.telefono, u.placa, t.fecha_hora_turno, t.estado, t.observaciones
+                            ORDER BY t.fecha_hora_turno DESC
+                        """, (f"%{placa_busqueda}%",))
+                        resultados = cur_b.fetchall()
+                        db_bus.close()
+                        
+                        if resultados:
+                            st.success(f"Se encontraron {len(resultados)} turnos para la placa `{placa_busqueda}`:")
+                            for r in resultados:
+                                st.markdown(f"""
+                                * **ID:** #{r['id']} | **Estado:** `{r['estado'].upper()}`
+                                * **Cliente:** {r['nombre']} (Tel: {r['telefono']})
+                                * **Servicios:** {r['nombres_servicios']}
+                                * **Fecha:** {r['fecha_hora_turno']}
+                                * **Obs:** {r['observaciones'] if r['observaciones'] else 'Ninguna'}
+                                """)
+                                st.markdown("---")
+                        else:
+                            st.warning(f"No se encontraron turnos asociados a la placa `{placa_busqueda}`.")
+                except Exception as e:
+                    st.error(f"Error en la búsqueda: {e}")
+
+        # --- PESTAÑA 3: RESUMEN Y ESTADÍSTICAS ---
+        with admin_tab3:
+            st.subheader("📈 Métricas Generales del Lubricentro")
+            try:
+                db_met = conectar_db()
+                if db_met:
+                    cur_m = db_met.cursor(dictionary=True)
+                    
+                    # Totales por estado
+                    cur_m.execute("SELECT estado, COUNT(*) as total FROM turnos GROUP BY estado")
+                    estadisticas = {row['estado']: row['total'] for row in cur_m.fetchall()}
+                    
+                    # Total clientes
+                    cur_m.execute("SELECT COUNT(*) as total_cl FROM usuarios WHERE rol = 'cliente'")
+                    total_clientes = cur_m.fetchone()['total_cl']
+                    
+                    db_met.close()
+                    
+                    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+                    with col_m1:
+                        st.metric("Total Clientes", total_clientes)
+                    with col_m2:
+                        st.metric("Pendientes 🟡", estadisticas.get('pendiente', 0))
+                    with col_m3:
+                        st.metric("En Proceso 🔵", estadisticas.get('en_proceso', 0))
+                    with col_m4:
+                        st.metric("Finalizados 🟢", estadisticas.get('finalizado', 0))
+                else:
+                    st.error("No se pudo conectar a la base de datos para las métricas.")
+            except Exception as e:
+                st.error(f"Error al cargar métricas: {e}")
         
     else:
         st.header("🚗 Panel de Turnos - Cliente")
