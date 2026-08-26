@@ -321,11 +321,14 @@ else:
                                     db.close()
                                     
                                     # --- ENVÍO DE ALERTA A WHATSAPP DE LA ADMINISTRADORA ---
+                                    dt_obj = datetime.strptime(fecha_hora_completa, "%Y-%m-%d %H:%M:%S")
+                                    fecha_hora_12h = dt_obj.strftime("%Y-%m-%d %I:%M %p")
+                                    
                                     nombres_servicios_str = ", ".join(servicios_seleccionados)
-                                    mensaje_whatsapp = f"""🚨 *Turno Solicitado*
+                                    mensaje_whatsapp = f"""🚨 *Turno solicitado*
 ID Turno: #{turno_id}
-Servicios a rea: {nombres_servicios_str}
-Fecha y Hora: {fecha_hora_completa}
+Servicios: {nombres_servicios_str}
+Fecha y Hora: {fecha_hora_12h}
 Estado: 🟡 PENDIENTE
 Observaciones: {observaciones if observaciones else 'Ninguna'}"""
                                     enviar_alerta_whatsapp(mensaje_whatsapp)
@@ -388,10 +391,14 @@ Observaciones: {observaciones if observaciones else 'Ninguna'}"""
                                             db_del.close()
                                             
                                             # --- ENVÍO DE ALERTA DE ANULACIÓN A WHATSAPP ---
-                                            mensaje_anulacion = f"""❌ *Turno Cancelado o Eliminado*
+                                            # Convertimos la fecha y hora almacenada a formato 12 horas
+                                            dt_obj_del = datetime.strptime(str(turno['fecha_hora_turno']), "%Y-%m-%d %H:%M:%S")
+                                            fecha_hora_del_12h = dt_obj_del.strftime("%Y-%m-%d %I:%M %p")
+                                            
+                                            mensaje_anulacion = f"""❌ *Turno Anulado/Eliminado*
 ID Turno: #{turno['id']}
 Servicios: {turno['nombres_servicios']}
-Fecha y Hora: {turno['fecha_hora_turno']}
+Fecha y Hora: {fecha_hora_del_12h}
 Estado: 🔴 CANCELADO"""
                                             enviar_alerta_whatsapp(mensaje_anulacion)
                                             # ---------------------------------------------
