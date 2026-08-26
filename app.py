@@ -218,28 +218,42 @@ else:
                         try:
                             db = conectar_db()
                             if db:
-                                cursor = db.cursor()
-                                # 1. Insertamos UN SOLO turno principal en la tabla turnos
+                                cursor = db.cursor(dictionary=True)
+                                
+                                # VERIFICACIÓN DE DOBLE RESERVA: Comprobamos si la hora ya está ocupada
                                 cursor.execute(
-                                    """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
-                                       VALUES (%s, %s, %s, %s, 'pendiente', %s)""",
-                                    (user['id'], user['id'], servicios_dict[servicios_seleccionados[0]], fecha_hora_completa, observaciones)
+                                    "SELECT id FROM turnos WHERE fecha_hora_turno = %s AND estado != 'cancelado'", 
+                                    (fecha_hora_completa,)
                                 )
-                                turno_id = cursor.lastrowid
+                                turno_existente = cursor.fetchone()
                                 
-                                # 2. Insertamos todos los servicios seleccionados en la tabla intermedia turno_servicios
-                                for serv_nombre in servicios_seleccionados:
-                                    serv_id = servicios_dict[serv_nombre]
-                                    cursor.execute(
-                                        "INSERT INTO turno_servicios (turno_id, servicio_id) VALUES (%s, %s)",
-                                        (turno_id, serv_id)
+                                if turno_existente:
+                                    st.error("⚠️ Lo sentimos, este horario ya fue reservado por otro usuario. Por favor selecciona otra hora libre en el calendario.")
+                                    db.close()
+                                else:
+                                    # 1. Insertamos UN SOLO turno principal en la tabla turnos
+                                    cursor_insert = db.cursor()
+                                    cursor_insert.execute(
+                                        """INSERT INTO turnos (usuario_id, vehiculo_id, servicio_id, fecha_hora_turno, estado, observaciones) 
+                                           VALUES (%s, %s, %s, %s, 'pendiente', %s)""",
+                                        (user['id'], user['id'], servicios_dict[servicios_seleccionados[0]], fecha_hora_completa, observaciones)
                                     )
-                                
-                                db.commit()
-                                db.close()
-                                
-                                st.session_state['turno_preseleccionado'] = None
-                                st.success("✅ ¡Turno agendado con éxito!")
+                                    turno_id = cursor_insert.lastrowid
+                                    
+                                    # 2. Insertamos todos los servicios seleccionados en la tabla intermedia turno_servicios
+                                    for serv_nombre in servicios_seleccionados:
+                                        serv_id = servicios_dict[serv_nombre]
+                                        cursor_insert.execute(
+                                            "INSERT INTO turno_servicios (turno_id, servicio_id) VALUES (%s, %s)",
+                                            (turno_id, serv_id)
+                                        )
+                                    
+                                    db.commit()
+                                    db.close()
+                                    
+                                    st.session_state['turno_preseleccionado'] = None
+                                    st.success("✅ ¡Turno agendado con éxito!")
+                                    st.rerun()
                         except Exception as e:
                             st.error(f"Error al guardar el turno: {e}")
             else:
