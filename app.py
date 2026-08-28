@@ -192,7 +192,7 @@ else:
                                 * 👤 **Cliente:** {t['nombre_cliente']} (📞 {t['telefono_cliente']})
                                 * 🚗 **Placa:** `{t['placa']}`
                                 * 🛠️ **Servicios:** {t['nombres_servicios']}
-                                * 📅 **Fecha y Hora:** {fecha_fmt}
+                                * 📅 **Fecha y Hora de Turno:** {fecha_fmt}
                                 * 📝 **Observaciones:** {t['observaciones'] if t['observaciones'] else 'Ninguna'}
                                 """)
                                 
