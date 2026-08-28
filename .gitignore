@@ -1,0 +1,7 @@
+# Configuración de Streamlit protegida
+.streamlit/
+
+# Base de datos local o archivos temporales
+*.db
+__pycache__/
+.env

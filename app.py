@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import os
 from datetime import datetime, timedelta
 from database.conexion import conectar_db
 
@@ -30,15 +31,19 @@ def actualizar_estado_turno(turno_id, nuevo_estado):
     except Exception as e:
         st.error(f"Error al actualizar estado: {e}")
 # --- FUNCIÓN PARA ENVIAR ALERTAS POR WHATSAPP A MÚLTIPLES NÚMEROS ---
+
+# Si no encuentra la variable de entorno, deja un texto vacío (NUNCA la clave real)
+EVO_URL = os.getenv("EVO_URL", "https://automatizacion-evolution-api.3akfbq.easypanel.host")
+EVO_KEY = os.getenv("EVO_API_KEY", "") 
+
 def enviar_alerta_whatsapp(texto_mensaje):
-    url = "https://automatizacion-evolution-api.3akfbq.easypanel.host/message/sendText/turnoslubricentro"
+    url = f"{EVO_URL}/message/sendText/turnoslubricentro"
     
     headers = {
-        "apikey": "429683C4C977415CAAFCCE10F7D57E11",
+        "apikey": EVO_KEY, # Aquí tomará la clave de forma segura desde el servidor
         "Content-Type": "application/json"
     }
     
-    # Lista con los dos números de las administradoras
     numeros_administradoras = ["573137655289", "573122688378"]
     
     for numero in numeros_administradoras:
